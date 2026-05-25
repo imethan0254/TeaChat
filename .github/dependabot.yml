@@ -1,0 +1,30 @@
+# Dependabot — 自動 PR 當 @qijenchen/design-system / storybook-config 新版本上 npm
+# Per user 2026-05-25「任何 repo 增刪改,package 該同步的都應該自動自主同步,不需要耳提面命」
+# 對齊 GitHub-native(免費 / 0 maintain / 不需 token)
+version: 2
+updates:
+  # npm deps — DS + storybook-config 自動跟
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-name: "@qijenchen/design-system"
+      - dependency-name: "@qijenchen/storybook-config"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps"
+      include: scope
+    labels:
+      - "dependencies"
+      - "auto-sync"
+
+  # GitHub Actions — workflows 自己 dep 也跟
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels:
+      - "ci"
