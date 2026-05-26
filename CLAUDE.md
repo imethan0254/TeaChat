@@ -1,6 +1,24 @@
 # Product Workspace — Claude Code Instructions
 
-## 🚨 第 0 步:Cross-load DS canonical(Claude 開啟本 repo 第一件事必做)
+## 🛑 第 −1 步:Plugin install BLOCKER(2026-05-26 anchor — 沒裝 = 視覺跑版 + AI 憑記憶寫 mock)
+
+**Claude 開啟本 repo 第一件事(沒裝 plugin 不准動 production code)**:
+
+```bash
+/plugin marketplace add github:ajenchen/design-system
+/plugin install design-system@qijenchen-ds
+```
+
+**沒裝後果**(2026-05-26 anchor case):
+- 41 個 DS governance hooks 全部不 fire(M29 anchor preflight / approval-preflight / SSOT propagation 全失效)
+- AI 寫 `apps/_template/src/App.tsx` 憑記憶寫 simplified mock(漏 SidebarTrigger / collapsible / startIcon / tooltip / footer)
+- 視覺直接跑版 + 互動破損(menu toggle 不見 / sidebar 收不起來)
+
+**自動 detect**:`npm install` 後跑 `scripts/check-plugin-installed.mjs` 印紅色 warning(不 exit 1 避免擋 CI);DS-side SessionStart hook `check_fork_user_plugin_install.sh` 二次攔截(plugin 裝完後自帶)。
+
+---
+
+## 🚨 第 0 步:Cross-load DS canonical(Claude 開啟本 repo 第二件事必做)
 
 **Why**:本 repo 消費 `@qijenchen/design-system`。DS 設計原則 / M-rules / spec / rules / references 是 **SSOT 在 DS repo**,隨 npm package 自動 ship 到本地 `node_modules/`,**但 Claude 不會自動 cross-load**。
 
