@@ -1,52 +1,110 @@
 # Product Workspace — Claude Code Instructions
 
-This repo consumes `@qijenchen/design-system`. **All design governance lives in the DS plugin** — install via `/plugin marketplace add github:ajenchen/design-system` and inherit 31+ M-rules / 22+ skills / 38+ hooks automatically.
+## 🚨 第 0 步:Cross-load DS canonical(Claude 開啟本 repo 第一件事必做)
+
+**Why**:本 repo 消費 `@qijenchen/design-system`。DS 設計原則 / M-rules / spec / rules / references 是 **SSOT 在 DS repo**,隨 npm package 自動 ship 到本地 `node_modules/`,**但 Claude 不會自動 cross-load**。
+
+**Claude 開啟本 repo 第一件事(必執行,不可跳)**:
+
+```bash
+# Read DS canonical(SSOT,every session)
+@node_modules/@qijenchen/design-system/CLAUDE.md
+@node_modules/@qijenchen/design-system/ds-canonical/rules/meta-patterns.md
+```
+
+Plus on-demand 讀 `ds-canonical/` 內:
+- `rules/` — 31 M-rules + ui-development / spec-rules / story-rules / self-verify
+- `references/` — naming-conventions / ssot-consultation / tailwind-gotchas / props-naming 等 SSOT lookup tables
+- `skills/` — 22 skills(/prototype / /component-quality-gate / /codify-corrections 等)— via plugin install 也 expose
+
+→ **DS canonical 永遠是 SSOT,本 repo 規則只 extend / override consumer-specific 部分**。
+
+---
 
 ## 🚀 Fork-and-go onboarding(Claude 自動執行流程)
 
-Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**幫 user 設定 painless onboarding:
+Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painless onboarding:
 
 | Step | Action | Why |
 |---|---|---|
-| 1 | `npm install` | 拉 `@qijenchen/design-system` + `@qijenchen/storybook-config` npm deps |
-| 2 | `/plugin marketplace add github:ajenchen/design-system` | 拿 DS governance plugin(31 M-rules / 22 skills / 38 hooks 自動下載) |
-| 3 | `npm run setup:netlify` | 自動 Netlify CLI 流程:login + link site + enable Identity + restrict access + invite team |
-| 4 | `npm run create-app <new-app-name>`(若需新 product app) | copy `_template/` → 新 app folder |
-| 5 | `npm run storybook` 本地驗 fork 跑起來 | 確認 DS components 視覺正確 |
-| 6 | Push main → Netlify auto-deploy + Storybook auto-rebuild | done |
+| 0 | Cross-load DS canonical(見上)| 拿 design SSOT |
+| 1 | `npm install` | 拉 `@qijenchen/design-system` + `@qijenchen/storybook-config` npm deps + DS canonical 隨 npm 落地 |
+| 2 | `/plugin marketplace add github:ajenchen/design-system` | 拿 DS governance plugin(22 skills / 38 hooks 自動下載) |
+| 3 | `/plugin install design-system` | 啟動 plugin |
+| 4 | `npm run setup:netlify` | Netlify CLI 自動 enable Identity + restrict access + invite team |
+| 5 | `npm run create-app <new-app-name>`(若需新 product app) | copy `_template/` → 新 app folder |
+| 6 | `npm run storybook` 本地 verify | 確認 DS components 視覺正確 |
+| 7 | Push main → Netlify auto-deploy + Storybook auto-rebuild | done |
 
-## Local-only rules(not in DS plugin)
+---
 
-### Consumer canonical(this repo specific)
+## 🔄 Daily dev workflow(SSOT auto-sync)
+
+| 事件 | 自動發生什麼 |
+|---|---|
+| DS publish 新 beta | Dependabot daily(`.github/dependabot.yml`)+ `sync-design-system.yml` repository_dispatch → 本 repo 自動 bump deps + commit |
+| Plugin / skills / hooks 更新 | User 偶爾跑 `/plugin marketplace update` 拿最新 |
+| 你寫 product code | Plugin hooks 自動 enforce SSOT(import DS internals 攔截 / canonical drift 警告 / story 規範等) |
+| Push main | `audit.yml` tsc + lint:imports + build / `deploy.yml` apps Netlify / Storybook netlify.toml auto-rebuild |
+
+---
+
+## 📐 Consumer canonical(本 repo specific)
 
 1. **禁** import DS internals(`@qijenchen/design-system/src/...` or `/dist/...`)— 用 public surface only。Hook + `npm run lint:imports` 攔。
 2. **禁** 修 `node_modules/@qijenchen/design-system/` — 有需求 file PR 回 DS repo,不在 product workspace fork。
 3. 每新 app(`npm run create-app <name>`)務必走 `_template/`(已配 AppShell + Sidebar + globals.css + storybook 標準 import)。
 4. App-level CSS 只 extend / override,**不重寫** DS tokens(`--color-*` / `--space-*` 等)。
-5. **App.tsx 起點走 AppShell + Sidebar**(per 2026-05-26 user directive「app shells 的範例」),不從孤立 Button 開始。
+5. **App.tsx 起點走 AppShell + Sidebar**,不從孤立 Button 開始(per `_template` 範例)。
 
-### Storybook 用途分工
+---
 
-- **DS repo Storybook**(<https://ajenchen.github.io/design-system/>)= DS library 元件 reference docs
-- **本 repo Storybook**(Netlify deploy)= **真實 product UI demo**(PM / designer / QA 看業務情境)
-- Stories 寫 PRODUCT scenarios(不是 DS element trait grid)
+## 📚 Storybook 用途分工
 
-### Access control(strict required for Netlify)
+- **DS repo Storybook**(<https://ajenchen.github.io/design-system/>)= DS library 元件 reference docs(public 或 password protected by DS owner)
+- **本 repo Storybook**(Netlify deploy,Identity protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
+- Stories 寫 PRODUCT scenarios(不是 DS element trait grid)— DS trait grid 是 DS repo 責任
+
+---
+
+## 🔒 Access control(strict required for Netlify)
 
 **Default = Netlify Identity**(自動 invite,per-user revoke,免費 1000 users)。
-- `npm run setup:netlify` 自動跑完
+- `npm run setup:netlify` 自動跑完(scripts/setup-netlify-access.mjs)
 - 或手動 Dashboard:Site → Identity → Enable + Invite-only + Restrict access + Invite users
 - `.storybook/manager-head.html` Identity widget 已 codify(fork user 不需動 code)
 
-### Task navigation
+---
+
+## ✅ Compliance check(永遠合規 + 永遠 SSOT 機制)
+
+Plugin install 後自動執行的合規 gate(逐 phase):
+
+| Phase | Gate | 自動 trigger |
+|---|---|---|
+| Edit time | Hook `check_substantive_edit_approval_preflight.sh` | Pre-write 攔 SSOT-affecting edit 需 user approval |
+| Edit time | Hook `check_ssot_consultation.sh` / `auto_regen_ds_barrel.sh` | 偵 import / canonical drift |
+| Pre-commit | `audit-content-quality.mjs` | DS spec 一致性 |
+| CI(push)| `audit.yml` tsc + lint:imports + build | 攔語法 / 邊界 |
+| Pre-deploy | Storybook smoke + visual baseline(via DS repo CI) | 視覺 drift |
+| 季度 / 大改 | `/design-system-audit --deep` skill | 56 dim 全掃 |
+
+→ **Claude 寫 code 時 plugin hooks 自動 fire,user 不必每次提醒,違規 = 立即 BLOCKER**。
+
+---
+
+## 🗂 Task navigation
 
 | 任務 | 走法 |
 |------|-------|
 | 建新 product UI / 開新 page | `/prototype` skill(走 DS plugin)|
-| 元件用法問題 | DS Storybook URL(reference)或 grep `node_modules/@qijenchen/design-system/dist/` types |
-| App 完成要 ship | `/component-quality-gate` skill 走過 review,然後 push main |
-| Bug fix | 查 DS spec + grep 本 repo apps/* 既有用法,不發明新 pattern |
+| 元件用法問題 | DS Storybook URL OR `node_modules/@qijenchen/design-system/dist/index.d.ts` types |
+| App 完成要 ship | `/component-quality-gate` skill → review → push main |
+| Bug fix | 查 DS spec(`ds-canonical/`)+ grep 本 repo apps/* 既有用法,**不發明新 pattern** |
 | 新 product | `npm run create-app <name>` |
+| 升 DS 版本 | Dependabot auto-PR / `npm update @qijenchen/design-system` |
+
+---
 
 ## Stack
 
