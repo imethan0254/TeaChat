@@ -21,8 +21,8 @@
     "postinstall": "node scripts/check-plugin-installed.mjs"
   },
   "dependencies": {
-    "@qijenchen/design-system": "^0.1.0-beta.21",
-    "@qijenchen/storybook-config": "^0.1.0-beta.21",
+    "@qijenchen/design-system": "^0.1.0-beta.22",
+    "@qijenchen/storybook-config": "^0.1.0-beta.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

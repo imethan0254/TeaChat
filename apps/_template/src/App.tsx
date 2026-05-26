@@ -28,7 +28,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-  Avatar,
+  ItemAvatar,
   Button,
 } from '@qijenchen/design-system'
 import { LayoutDashboard, Users, Settings, FileText, BarChart3 } from 'lucide-react'
@@ -47,7 +47,7 @@ function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:justify-center">
-          <Avatar alt="Acme" shape="square" color="blue" solid />
+          <ItemAvatar alt="Acme Product" shape="square" color="blue" solid />
           <span className="text-body-lg font-medium truncate group-data-[collapsible=icon]:hidden">Acme Product</span>
         </div>
       </SidebarHeader>
@@ -70,7 +70,7 @@ function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton id="user-profile">
-              <Avatar alt="Current user" color="blue" />
+              <ItemAvatar alt="Current user" color="blue" />
               <span className="truncate">當前使用者</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
