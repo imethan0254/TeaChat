@@ -73,21 +73,26 @@ Then plugin auto-enables (`.claude/settings.json` `defaultMode: "auto"`). You ge
 - Import only from public surface: `@qijenchen/design-system` top barrel,`@qijenchen/design-system/styles/tokens`,`@qijenchen/design-system/hooks/<name>`
 - Run `npm run lint:imports` before commit to catch internal-path leaks
 
-## CI secrets needed(fork-and-go painless setup)
+## Fork-and-go setup(painless,對齊 DS repo pattern)
 
-Per user 2026-05-26 directive「fork product workspace 註冊 netlify 即能達到一樣效果」。
-Fork 後 GitHub repo Settings → Secrets → Actions 加 3 個 secrets:
+Per user 2026-05-26 directive「fork product workspace 註冊 netlify 即能達到一樣效果」+ 後續
+challenge「為何要設這個 secret?」→ 對齊 DS repo pattern(netlify.toml + Netlify Git integration)。
+
+### Storybook deploy(無需 secret)
+1. Netlify Dashboard → **New site** → 連 fork 後的 `product-workspace` repo
+2. Netlify 自動讀根目錄 `netlify.toml` → build `storybook-static` → deploy
+3. 完成。每次 push main → Netlify auto rebuild。Per-branch preview 自動啟用。
+
+### App deploy(`apps/_template/dist`)— 需 GitHub Actions secret
+App 是 monorepo sub-dir build(root install + cd apps/X build),Netlify Git integration 不適合
+(會在 root run build 但 publish dir 在 sub-dir)。所以走 GitHub Actions workflow:
 
 | Secret | 用途 | 取得方式 |
 |---|---|---|
-| `NETLIFY_AUTH_TOKEN` | 共用 auth(兩個 site 都用)| Netlify → User settings → Applications → Personal access tokens |
-| `NETLIFY_SITE_ID_TEMPLATE` | Deploy `_template` 真實 product app | 新建 Netlify site → Site overview → Site ID |
-| `NETLIFY_SITE_ID_STORYBOOK` | Deploy Storybook(PM/designer/QA demo)| 新建第 2 個 Netlify site → Site ID |
+| `NETLIFY_AUTH_TOKEN` | Netlify auth | Netlify → User settings → Applications → Personal access tokens |
+| `NETLIFY_SITE_ID_TEMPLATE` | _template app site ID | 新建 Netlify site for app → Site overview → Site ID |
 
-設完後:
-- `.github/workflows/deploy.yml` push main → deploy `apps/_template/dist` → app site
-- `.github/workflows/deploy-storybook.yml` push main → deploy `storybook-static` → storybook site
-- 兩個 site 跟著 main 自動 sync,fork-and-go 真的 painless
+設完 secrets 後 `.github/workflows/deploy.yml` push main → deploy `apps/_template/dist`。
 
 完整 step-by-step 詳 `docs/01-first-time-setup.md`。
 

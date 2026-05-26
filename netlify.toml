@@ -1,0 +1,21 @@
+# 2026-05-26 對齊 DS repo pattern(netlify.toml + Netlify Git integration)
+# Per user 「為何要設這個 secret?」challenge — DS repo 就沒用 secret,直接 Netlify 連 repo auto-build。
+#
+# Fork-and-go 流程(painless,無需 GitHub secret):
+#   1. Netlify Dashboard → New site → 連 fork 後的 product-workspace repo
+#   2. Netlify 自動讀本 file → build storybook-static → deploy
+#   3. 完成。每次 push main → Netlify auto rebuild。
+#
+# 對應 apps/_template app deploy 走另一條路(.github/workflows/deploy.yml + Netlify secret)—
+# 因為 _template 是 monorepo sub-dir build,要從 root npm install 全 workspaces 再 cd apps/_template build,
+# Netlify Git integration 不適合(會在 root run build,但 publish dir 在 sub-dir)。
+
+[build]
+  command = "npm run build-storybook"
+  publish = "storybook-static"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Per-branch deploy previews 預設啟用(任何 branch push → 自動 preview URL)
+# Production deploy 走 main(production URL = 永遠最新 main 的 storybook)
