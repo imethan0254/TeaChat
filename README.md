@@ -78,10 +78,15 @@ Then plugin auto-enables (`.claude/settings.json` `defaultMode: "auto"`). You ge
 Per user 2026-05-26 directive「fork product workspace 註冊 netlify 即能達到一樣效果」+ 後續
 challenge「為何要設這個 secret?」→ 對齊 DS repo pattern(netlify.toml + Netlify Git integration)。
 
-### Storybook deploy(無需 secret)
+### Storybook deploy(無需 GitHub secret)
 1. Netlify Dashboard → **New site** → 連 fork 後的 `product-workspace` repo
 2. Netlify 自動讀根目錄 `netlify.toml` → build `storybook-static` → deploy
-3. 完成。每次 push main → Netlify auto rebuild。Per-branch preview 自動啟用。
+3. **🔒 必設 access control**(per 2026-05-26 user directive「不是所有人都看得到」):
+   - Site settings → **Access & security** → **Visitor access** → 「Password protect site」(Pro plan $19/mo)
+   - 或免費替代:Site settings → Netlify Identity(限 5 users)
+   - 或:Cloudflare Access proxy(免費 auth gate)
+   - `netlify.toml` 已加 `X-Robots-Tag: noindex`(搜尋引擎不收錄)— 但**這只防 SEO,不防直接訪問 URL**,必須配 password。
+4. 每次 push main → Netlify auto rebuild。Per-branch preview 自動啟用。
 
 ### App deploy(`apps/_template/dist`)— 需 GitHub Actions secret
 App 是 monorepo sub-dir build(root install + cd apps/X build),Netlify Git integration 不適合
