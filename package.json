@@ -1,8 +1,8 @@
 {
-  "name": "product-workspace",
+  "name": "ds-product-template",
   "private": true,
   "version": "0.0.0",
-  "description": "Monorepo for product team apps consuming @qijenchen/design-system",
+  "description": "GitHub Template Repository — fork-and-go monorepo for product team apps consuming @qijenchen/design-system. Use 'Use this template' button OR clone + npm run create-app <product-name>.",
   "type": "module",
   "workspaces": [
     "apps/*",

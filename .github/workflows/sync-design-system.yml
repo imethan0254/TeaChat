@@ -44,7 +44,7 @@ jobs:
 
       - name: Verify build still pass
         run: |
-          cd apps/_template
+          cd apps/template
           npm run build
 
       - name: Commit + push if changed

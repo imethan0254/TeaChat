@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// scripts/create-app.mjs — bootstrap a new product app from apps/_template/
+// scripts/create-app.mjs — bootstrap a new product app from apps/template/
 //
 // Usage: npm run create-app <kebab-case-name>
 //
-// Copies apps/_template/ → apps/<name>/ + patches package.json name + index.html title.
+// Copies apps/template/ → apps/<name>/ + patches package.json name + index.html title.
 
 import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -22,7 +22,7 @@ if (!/^[a-z][a-z0-9-]*$/.test(name)) {
   process.exit(1)
 }
 
-const src = join(REPO_ROOT, 'apps/_template')
+const src = join(REPO_ROOT, 'apps/template')
 const dest = join(REPO_ROOT, 'apps', name)
 
 if (existsSync(dest)) {

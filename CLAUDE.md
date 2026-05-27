@@ -11,7 +11,7 @@
 
 **沒裝後果**(2026-05-26 anchor case):
 - 41 個 DS governance hooks 全部不 fire(M29 anchor preflight / approval-preflight / SSOT propagation 全失效)
-- AI 寫 `apps/_template/src/App.tsx` 憑記憶寫 simplified mock(漏 SidebarTrigger / collapsible / startIcon / tooltip / footer)
+- AI 寫 `apps/template/src/App.tsx` 憑記憶寫 simplified mock(漏 SidebarTrigger / collapsible / startIcon / tooltip / footer)
 - 視覺直接跑版 + 互動破損(menu toggle 不見 / sidebar 收不起來)
 
 **自動 detect**:`npm install` 後跑 `scripts/check-plugin-installed.mjs` 印紅色 warning(不 exit 1 避免擋 CI);DS-side SessionStart hook `check_fork_user_plugin_install.sh` 二次攔截(plugin 裝完後自帶)。
@@ -50,7 +50,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 | 2 | `/plugin marketplace add github:ajenchen/design-system` | 拿 DS governance plugin(22 skills / 38 hooks 自動下載) |
 | 3 | `/plugin install design-system` | 啟動 plugin |
 | 4 | `npm run setup:netlify` | Netlify CLI 自動 enable Identity + restrict access + invite team |
-| 5 | `npm run create-app <new-app-name>`(若需新 product app) | copy `_template/` → 新 app folder |
+| 5 | `npm run create-app <new-app-name>`(若需新 product app) | copy `template/` → 新 app folder |
 | 6 | `npm run storybook` 本地 verify | 確認 DS components 視覺正確 |
 | 7 | Push main → Netlify auto-deploy + Storybook auto-rebuild | done |
 
@@ -71,9 +71,9 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 
 1. **禁** import DS internals(`@qijenchen/design-system/src/...` or `/dist/...`)— 用 public surface only。Hook + `npm run lint:imports` 攔。
 2. **禁** 修 `node_modules/@qijenchen/design-system/` — 有需求 file PR 回 DS repo,不在 product workspace fork。
-3. 每新 app(`npm run create-app <name>`)務必走 `_template/`(已配 AppShell + Sidebar + globals.css + storybook 標準 import)。
+3. 每新 app(`npm run create-app <name>`)務必走 `template/`(已配 AppShell + Sidebar + globals.css + storybook 標準 import)。
 4. App-level CSS 只 extend / override,**不重寫** DS tokens(`--color-*` / `--space-*` 等)。
-5. **App.tsx 起點走 AppShell + Sidebar**,不從孤立 Button 開始(per `_template` 範例)。
+5. **App.tsx 起點走 AppShell + Sidebar**,不從孤立 Button 開始(per `template` 範例)。
 
 ---
 
@@ -176,6 +176,6 @@ Vite + React 19 + TypeScript + Tailwind v4 + Storybook 8.6 + `@qijenchen/design-
 ## CI
 
 - `audit.yml` — tsc + lint:imports + build per push/PR
-- `deploy.yml` — `apps/_template/dist` per-app Netlify(需 NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID_TEMPLATE secrets)
+- `deploy.yml` — `apps/template/dist` per-app Netlify(需 NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID_TEMPLATE secrets)
 - `netlify.toml` — Storybook Netlify Git integration(無需 secret,直接讀 build command + access headers)
 - `sync-design-system.yml` — Dependabot daily + repository_dispatch(DS release 自動 bump deps)

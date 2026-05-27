@@ -15,8 +15,8 @@ on:
 
 jobs:
   deploy-template:
-    if: github.event_name == 'workflow_dispatch' && (inputs.app == '_template' || inputs.app == '')
-    name: Deploy _template(canary)
+    if: github.event_name == 'workflow_dispatch' && (inputs.app == 'template' || inputs.app == '')
+    name: Deploy template(canary)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,12 +26,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: cd apps/_template && npm run build
+      - run: cd apps/template && npm run build
       - name: Deploy to Netlify(if secrets set)
         if: ${{ secrets.NETLIFY_SITE_ID_TEMPLATE != '' && secrets.NETLIFY_AUTH_TOKEN != '' }}
         uses: nwtgck/actions-netlify@v3
         with:
-          publish-dir: apps/_template/dist
+          publish-dir: apps/template/dist
           production-deploy: ${{ github.ref == 'refs/heads/main' }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

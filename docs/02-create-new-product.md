@@ -10,7 +10,7 @@ npm run create-app <kebab-case-name>
 ```
 
 行為:
-1. Copy `apps/_template/` → `apps/<name>/`
+1. Copy `apps/template/` → `apps/<name>/`
 2. Patch `package.json` name → `@product/<name>`
 3. Patch `index.html` title → `<name>`
 4. Print next steps

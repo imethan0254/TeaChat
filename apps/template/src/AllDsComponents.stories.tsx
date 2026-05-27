@@ -84,7 +84,7 @@ const exportNames = Object.keys(allDsExports)
 const definedCount = Object.values(allDsExports).filter(v => v !== undefined).length
 
 const meta: Meta = {
-  title: 'Apps/_template/All DS Components',
+  title: 'Apps/template/All DS Components',
   parameters: { layout: 'fullscreen' },
 }
 export default meta

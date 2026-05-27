@@ -1,35 +1,68 @@
-# Product Workspace
+# DS Product Template
 
-Monorepo for product team apps consuming [`@qijenchen/design-system`](https://github.com/ajenchen/design-system).
+> **GitHub Template Repository** for product team apps consuming [`@qijenchen/design-system`](https://github.com/ajenchen/design-system)。
+>
+> **Use this template** on GitHub → fork 為你自己的 repo,跑 `npm install` + `npm run create-app <product-name>` 就上線。
 
 ## Status
 
-- **2026-05-25** scaffold landed (Phase 5 deliverable per `design-system/.claude/planning/team-distribution-roadmap.md`)
-- Active apps: `apps/_template/`(canary)
-- Add a new app: `npm run create-app <kebab-case-name>`
+- **2026-05-27** repo 重命名 + template-friendly restructure(per fork-and-go workflow)
+- Seed app: `apps/template/`(預設範例,fork user 跑 create-app 後可刪)
+- Add a new product app: `npm run create-app <kebab-case-name>` → 在 `apps/<name>/` 開新 app
 
-## Quick start(Day 0)
+## Template Usage(Day 0 onboarding,fork user 必讀)
+
+### Step 1 — Fork
+
+**Owner setup once**(本 repo 擁有者):GitHub `Settings → General → Template repository ✓` 勾選 + `Settings → General → Danger Zone → Change visibility: Public`(讓 fork user 看到「Use this template」按鈕)。
+
+**Fork user**:GitHub「Use this template」按鈕 → Create new repo from template。
+
+或:`git clone <this-repo>` + `git remote set-url origin <your-new-repo>`。
+
+### Step 2 — npm install(plugin install warning 自動跑)
 
 ```bash
-# 1. clone
-git clone git@github.com:ajenchen/product-workspace.git
-cd product-workspace
-
-# 2. install workspace deps(pulls @qijenchen/design-system@beta + storybook-config)
-npm install
-
-# 3. spawn a new app
-npm run create-app order-dashboard
-cd apps/order-dashboard
-npm run dev
+npm install   # postinstall 紅色 warning 提示 /plugin install
 ```
+
+### Step 3 — Claude Code:plugin install + DS canonical cross-load
+
+```
+/plugin marketplace add github:ajenchen/design-system
+/plugin install design-system@qijenchen-ds
+```
+
+### Step 4 — Spawn your first product app
+
+```bash
+npm run create-app order-dashboard   # 在 apps/order-dashboard/ 開新 app
+cd apps/order-dashboard
+npm run dev   # localhost vite 啟動
+```
+
+Storybook root config `.storybook/main.ts` 自動 glob `apps/**/*.stories.tsx`,**每加新 app stories 自動現身 storybook**,不用手動 register。
+
+### Step 5 — Setup Netlify access control
+
+```bash
+npm run setup:netlify   # GitHub OAuth 1-click + auto site create + Identity invite-only
+```
+
+### Step 6 — Push main → 自動部署
+
+```bash
+git push origin main   # Netlify auto build storybook + per-branch preview
+```
+
+DS-side hook 自動 inject deploy URL into Claude reply(plugin 提供)。
 
 ## Layout
 
 ```
 product-workspace/
 ├── apps/                       ← Product apps (each is independent Vite + React)
-│   └── _template/              ← Copy this via `npm run create-app <name>`
+│   └── template/              ← Copy this via `npm run create-app <name>`
 │       ├── src/
 │       │   ├── main.tsx        ← React root + TooltipProvider
 │       │   ├── App.tsx         ← Replace with your product UI
@@ -121,16 +154,16 @@ npm run setup:netlify
 **Defense-in-depth**(`netlify.toml` 已 ship):X-Robots-Tag noindex / Referrer strict-origin / X-Frame SAMEORIGIN —
 搜尋引擎不收錄 URL,但**只防 SEO,不防直接訪問**,必須配上述 Identity 或 Password 才真實限團隊存取。
 
-### App deploy(`apps/_template/dist`)— 需 GitHub Actions secret
+### App deploy(`apps/template/dist`)— 需 GitHub Actions secret
 App 是 monorepo sub-dir build(root install + cd apps/X build),Netlify Git integration 不適合
 (會在 root run build 但 publish dir 在 sub-dir)。所以走 GitHub Actions workflow:
 
 | Secret | 用途 | 取得方式 |
 |---|---|---|
 | `NETLIFY_AUTH_TOKEN` | Netlify auth | Netlify → User settings → Applications → Personal access tokens |
-| `NETLIFY_SITE_ID_TEMPLATE` | _template app site ID | 新建 Netlify site for app → Site overview → Site ID |
+| `NETLIFY_SITE_ID_TEMPLATE` | template app site ID | 新建 Netlify site for app → Site overview → Site ID |
 
-設完 secrets 後 `.github/workflows/deploy.yml` push main → deploy `apps/_template/dist`。
+設完 secrets 後 `.github/workflows/deploy.yml` push main → deploy `apps/template/dist`。
 
 完整 step-by-step 詳 `docs/01-first-time-setup.md`。
 
