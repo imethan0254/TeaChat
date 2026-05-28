@@ -1,4 +1,5 @@
 // @anatomy-exempt: DS canonical proxy portal (per 2026-05-27 M31 codex synthesis)
+// @consumer-catalog-allow: documented proxy portal — links/iframes 到 DS Storybook,不 hand-mock DS components(per M31 codex synthesis)
 /**
  * AllDsComponents.stories.tsx — DS canonical Storybook proxy portal
  *
@@ -24,7 +25,7 @@ const hooks = allKeys.filter(k => k.startsWith('use'))
 const constants = allKeys.filter(k => /^[A-Z_]+$/.test(k))
 const utils = allKeys.filter(k => !/^[A-Z]/.test(k) && !k.startsWith('use'))
 
-const DS_STORYBOOK_URL = 'https://ajenchen.github.io/design-system/'
+const DS_STORYBOOK_URL = 'https://ajenchen-design-system.netlify.app/'
 
 const meta: Meta = {
   title: 'Apps/template/All DS Components (Portal)',
@@ -46,7 +47,7 @@ export const ImportSmoke: Story = {
         本 story 只驗 import 全部解析。**禁** render DS components in PW(per codex M31 synthesis 2026-05-27).
         Per-component visual canonical → DS deployed Storybook:{' '}
         <a href={DS_STORYBOOK_URL} target="_blank" rel="noopener" className="text-info underline">
-          ajenchen.github.io/design-system
+          ajenchen-design-system.netlify.app
         </a>
       </p>
       <details className="text-caption">
@@ -58,7 +59,7 @@ export const ImportSmoke: Story = {
 }
 
 export const DsCanonicalPortal: Story = {
-  name: 'DS canonical 跳轉',
+  name: 'DS Storybook 跳轉',
   render: () => (
     <div className="p-6 space-y-4" data-testid="ds-canonical-portal">
       <h1 className="text-h3">DS Component Canonical — 跳到 DS Storybook</h1>

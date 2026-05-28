@@ -44,10 +44,10 @@
 |---|---|
 | `npm run lint:imports` 報內部路徑 | 改 import 為 top barrel `from '@qijenchen/design-system'` |
 | 改 DS 想 fix bug 怎麼辦? | **不改 node_modules**。Open issue / PR to `ajenchen/design-system` repo |
-| 找不到某 component | Storybook https://ajenchen.github.io/design-system/ 全覽 |
+| 找不到某 component | Storybook https://ajenchen-design-system.netlify.app/ 全覽 |
 
 ## Get help
 
-- DS Storybook: https://ajenchen.github.io/design-system/
+- DS Storybook: https://ajenchen-design-system.netlify.app/
 - DS repo issues: https://github.com/ajenchen/design-system/issues
 - Claude session `/help` 列 skills

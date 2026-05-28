@@ -94,7 +94,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 
 ## 📚 Storybook 用途分工
 
-- **DS repo Storybook**(<https://ajenchen.github.io/design-system/>)= DS library 元件 reference docs(public 或 password protected by DS owner)
+- **DS repo Storybook**(<https://ajenchen-design-system.netlify.app/>)= DS library 元件 reference docs(public 或 password protected by DS owner)
 - **本 repo Storybook**(Netlify deploy,Identity protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
 - Stories 寫 PRODUCT scenarios(不是 DS element trait grid)— DS trait grid 是 DS repo 責任
 
