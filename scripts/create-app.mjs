@@ -3,10 +3,14 @@
 //
 // Usage: npm run create-app <kebab-case-name>
 //
-// Copies apps/template/ → apps/<name>/ + patches package.json name + index.html title.
+// Copies apps/template/ → apps/<name>/ + patches:
+//   - package.json `name` → @product/<name>
+//   - index.html `<title>` → <name>
+//   - story `title:` field 從 `Apps/template/...` → `Apps/<name>/...`(防 Storybook id 撞)
+// 排除 build artifacts(node_modules / dist / *.tsbuildinfo / .turbo / .next)
 
-import { cpSync, existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { cpSync, existsSync, readFileSync, writeFileSync, readdirSync, statSync, rmSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -21,6 +25,10 @@ if (!/^[a-z][a-z0-9-]*$/.test(name)) {
   console.error(`Name must be kebab-case lowercase: ${name}`)
   process.exit(1)
 }
+if (name === 'template') {
+  console.error(`Cannot use 'template' as app name(reserved for skeleton)`)
+  process.exit(1)
+}
 
 const src = join(REPO_ROOT, 'apps/template')
 const dest = join(REPO_ROOT, 'apps', name)
@@ -30,7 +38,24 @@ if (existsSync(dest)) {
   process.exit(1)
 }
 
-cpSync(src, dest, { recursive: true })
+// Exclude build artifacts + caches when copying(2026-05-28 anchor:cpSync 預設帶走 dist
+// + tsconfig.tsbuildinfo 等 stale build cache → 新 app 帶舊 path,即髒
+// build artifact 還在 sidebar 顯重複 story id)
+const EXCLUDED_NAMES = new Set([
+  'node_modules', 'dist', 'storybook-static', '.turbo', '.next', '.cache',
+  'tsconfig.tsbuildinfo',
+])
+cpSync(src, dest, {
+  recursive: true,
+  filter: (srcPath) => {
+    const rel = relative(src, srcPath)
+    // 第一層 entry name match → exclude(eg. src/apps/template/dist/foo.js
+    // 的 rel = 'dist/foo.js',頂層 'dist' 在 EXCLUDED_NAMES → skip 整 subtree)
+    const topLevel = rel.split('/')[0] || rel
+    if (EXCLUDED_NAMES.has(topLevel)) return false
+    return true
+  },
+})
 
 // Patch package.json name
 const pkgPath = join(dest, 'package.json')
@@ -70,10 +95,23 @@ function patchStoryTitles(dir) {
 }
 patchStoryTitles(join(dest, 'src'))
 
+// Safety net:rm dist + tsbuildinfo if any slipped past filter
+for (const cache of ['dist', 'tsconfig.tsbuildinfo', 'storybook-static']) {
+  const cachePath = join(dest, cache)
+  if (existsSync(cachePath)) {
+    rmSync(cachePath, { recursive: true, force: true })
+  }
+}
+
 console.log(`✓ Created apps/${name}/`)
 console.log(`✓ Patched story titles → Apps/${name}/...(防 Storybook id 撞 template)`)
+console.log(`✓ Excluded build artifacts(node_modules / dist / *.tsbuildinfo / .turbo / .next / .cache)`)
 console.log(``)
 console.log(`Next steps:`)
 console.log(`  npm install            # install workspace deps`)
 console.log(`  cd apps/${name}`)
 console.log(`  npm run dev            # start dev server`)
+console.log(``)
+console.log(`Verify in Storybook(from repo root):`)
+console.log(`  npm run build-storybook  # auto-picks apps/${name}/**/*.stories.tsx`)
+console.log(`  npx storybook dev -p 6006  # open http://localhost:6006/?path=/story/apps-${name}-...`)
