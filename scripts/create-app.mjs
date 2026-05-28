@@ -5,7 +5,7 @@
 //
 // Copies apps/template/ → apps/<name>/ + patches package.json name + index.html title.
 
-import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -46,7 +46,32 @@ const html = readFileSync(htmlPath, 'utf8').replace(
 )
 writeFileSync(htmlPath, html)
 
+// Patch story titles `Apps/template/...` → `Apps/<name>/...`(防 Storybook id 撞 collide
+// 與 template 的 stories — 否則 build 出 duplicate id warning + 只顯 template,新 product
+// 在 sidebar 不可見。anchor 2026-05-28 verify-flow-test e2e test 抓到 4 duplicate ids)
+function patchStoryTitles(dir) {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    const stat = statSync(full)
+    if (stat.isDirectory()) {
+      patchStoryTitles(full)
+    } else if (entry.endsWith('.stories.tsx') || entry.endsWith('.stories.ts') || entry.endsWith('.mdx')) {
+      const content = readFileSync(full, 'utf8')
+      // Match `title: 'Apps/template/...'` AND `title: "Apps/template/..."`
+      const patched = content.replace(
+        /(title:\s*['"`])Apps\/template\//g,
+        `$1Apps/${name}/`,
+      )
+      if (patched !== content) {
+        writeFileSync(full, patched)
+      }
+    }
+  }
+}
+patchStoryTitles(join(dest, 'src'))
+
 console.log(`✓ Created apps/${name}/`)
+console.log(`✓ Patched story titles → Apps/${name}/...(防 Storybook id 撞 template)`)
 console.log(``)
 console.log(`Next steps:`)
 console.log(`  npm install            # install workspace deps`)
