@@ -22,16 +22,21 @@ git push -u origin feat/<your-feature-name>
 
 - `audit.yml`:tsc + lint:imports + build all apps
 - `deploy.yml`:per-app Netlify preview deploy(若 secrets 配好)
-- `sync-design-system.yml`:repository_dispatch / daily cron(從 DS repo dispatch 即時同步,或 daily fallback)
+- `sync-design-system.yml`:`repository_dispatch`(DS publish 後 auto dispatch `design-system-published` / `ds-ssot-changed`)+ `workflow_dispatch`(fork user 主動觸發)。**2026-05-27 拿掉 daily cron** per user verbatim「只要確保主動更新時能同步到最新就好」。Fallback:Dependabot daily auto-PR(若 DS dispatch 失敗)
 
 ## Code review(CODEOWNERS)
 
 `.github/CODEOWNERS`:
 ```
-* @ajenchen
+* @ajenchen   # ← fork user 第 1 件事:改成自己 GitHub username(或 team handle)
 ```
 
-Solo 階段全 @ajenchen 自審。加 team member 後改 per-app owner:
+**Fork user 必跑**:
+```bash
+sed -i '' 's/@ajenchen/@<your-github-username>/g' .github/CODEOWNERS
+```
+
+加 team member 後改 per-app owner:
 ```
 /apps/order-dashboard/ @wendy @teammate2
 ```
