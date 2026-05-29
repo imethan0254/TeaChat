@@ -24,9 +24,13 @@ console.log('')
 
 const results = {
   npm: run(
-    'npm update @qijenchen/* to latest @beta',
+    // 2026-05-29 fix:明確 install @beta tag,不用 `npm update`(後者抓 `latest` dist-tag)。
+    // Why:pre-1.0 beta-only 套件,`latest` 可能跟 `beta` 分岔(beta.34 anchor:latest 卡 beta.33)
+    // → `npm update` 拿舊版 → fork user sync 不到最新修正。`@beta` 永遠 = 最新 beta,robust。
+    // (codex 2026-05-29 dual-track:「Do not rely on latest during prerelease」)
+    'npm install @qijenchen/* @beta(明確 tag,不靠 latest)',
     'npm',
-    ['update', '@qijenchen/design-system', '@qijenchen/storybook-config', '--legacy-peer-deps'],
+    ['install', '@qijenchen/design-system@beta', '@qijenchen/storybook-config@beta', '--legacy-peer-deps'],
   ),
   marketplace: run(
     'Claude plugin marketplace update qijenchen-ds',
