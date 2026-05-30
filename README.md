@@ -112,7 +112,7 @@ ds-product-template/
 │   ├── CODEOWNERS              ← Code review routing
 │   └── workflows/
 │       ├── audit.yml           ← tsc + lint + build per push/PR
-│       └── deploy.yml          ← Per-app Netlify deploy
+│       └── sync-design-system.yml ← Dependabot + DS 版本同步(repository_dispatch)
 ├── package.json                ← workspaces + DS deps
 ├── tsconfig.json               ← Base TS config (apps extend)
 └── README.md                   ← You are here
@@ -184,16 +184,17 @@ Deploy URL 在 push 後 hook `inject_deploy_url_after_push.sh` 自動 inject 進
 - 自架 **Cloudflare Access**(免費 50 user;setup 比 Netlify 複雜)
 - 公開 site,只防 SEO(`X-Robots-Tag noindex`)— 若 stakeholder 不介意 URL 知道就能看
 
-### App deploy(`apps/template/dist`)— 需 GitHub Actions secret
-App 是 monorepo sub-dir build(root install + cd apps/X build),Netlify Git integration 不適合
-(會在 root run build 但 publish dir 在 sub-dir)。所以走 GitHub Actions workflow:
+### Workflow 機制總覽
 
-| Secret | 用途 | 取得方式 |
+本 repo `.github/workflows/` 實際只有 2 個 workflow,deploy 不走 GitHub Actions:
+
+| 機制 | 觸發 | 做什麼 |
 |---|---|---|
-| `NETLIFY_AUTH_TOKEN` | Netlify auth | Netlify → User settings → Applications → Personal access tokens |
-| `NETLIFY_SITE_ID_TEMPLATE` | template app site ID | 新建 Netlify site for app → Site overview → Site ID |
+| `audit.yml` | push / PR | tsc + `lint:imports` + build CI gate |
+| `sync-design-system.yml` | Dependabot daily + `repository_dispatch`(DS release/SSOT change)| `npm update @qijenchen/*` + commit + push,讓 DS deps 永遠最新 |
+| `netlify.toml`(Netlify Git integration)| push main / per-branch | build `storybook-static` → deploy(無需 GitHub secret)|
 
-設完 secrets 後 `.github/workflows/deploy.yml` push main → deploy `apps/template/dist`。
+Storybook(含真實 product UI demo)透過 `netlify.toml` 的 Netlify Git integration 直接 deploy,push main 即 auto rebuild;不需要 `NETLIFY_AUTH_TOKEN` / site ID secret。
 
 完整 step-by-step 詳 `docs/01-first-time-setup.md`。
 

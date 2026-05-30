@@ -1,28 +1,34 @@
-#!/bin/bash
-# DS-repo Codespaces onboarding banner(Scenario A — DS source repo).
-# 與 template/ds-product-template/.devcontainer/onboard-banner.sh 的差異:
-#   本 repo 是 governance SOURCE(.claude/ native 可讀)→ 不需 /plugin install 步驟。
-# fail-open:純 echo,無外部呼叫,任何情況 exit 0。
-set -u
+#!/usr/bin/env bash
+# Codespaces onboard banner — fork user 一打開 terminal 看到的具體指引
+# Per 2026-05-29 user directive「真的無法自動化的要有具體的言簡意賅的中文明確引導」
+
 cat <<'BANNER'
 
-╔══════════════════════════════════════════════════════════════╗
-║  design-system (DS source repo) — Codespaces ready            ║
-╚══════════════════════════════════════════════════════════════╝
+╭─────────────────────────────────────────────────────────────╮
+│                                                             │
+│   🎉 Codespaces 環境 ready!                                  │
+│   已自動裝:Node 22 + gh CLI + jq + Claude Code + netlify    │
+│           + npm dependencies(全 workspaces)                │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
 
-這是 DS 原始碼 repo(Scenario A)。Governance(.claude/ hooks + skills + rules)原生可讀,
-不需 /plugin install(那是 Scenario B 消費端 fork 才需要)。
+下一步(依序 3 step,約 5 分鐘):
 
-下一步:
-  1. claude                      # 啟動 Claude Code(已隨 devcontainer 安裝)
-  2. npm run storybook           # 本地 Storybook → http://localhost:6006
-  3. npm run setup:netlify       # (選用)建 Netlify site + Basic Password,給人驗證 preview
+  ① 啟動 Claude Code(governance hooks 全 fire)
+     $ claude
 
-工作流(地端 / 雲端一致):
-  edit → push working branch → Netlify per-branch preview(你驗證的 gate)
-       → 你說 push → squash merge main → GitHub Pages 自動更新 Storybook
+  ② Claude 內裝 plugin(2 條 slash command,30 秒 copy-paste)
+     /plugin marketplace add github:ajenchen/design-system
+     /plugin install design-system@qijenchen-ds
 
-⚠️ 禁直接在 main 上改 production code(check_main_branch_workbench.sh 攔);1 chat = 1 working branch。
+  ③ Setup Netlify(OAuth + 30 秒 dashboard 設密碼)
+     $ npm run setup:netlify
+     → 跟著 script 印的 dashboard URL 設 Basic Password
+
+之後寫 code:
+  $ npm run create-app <kebab-name>   # 開新 product app
+  $ npm run storybook                  # localhost:6006 看視覺
+
+詳:README.md "Template Usage" 段 + CLAUDE.md "🚀 Fork-and-go onboarding"
 
 BANNER
-exit 0

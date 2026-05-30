@@ -78,7 +78,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 | DS publish 新 beta | Dependabot daily(`.github/dependabot.yml`)+ `sync-design-system.yml` repository_dispatch → 本 repo 自動 bump deps + commit |
 | Plugin / skills / hooks 更新 | User 偶爾跑 `/plugin marketplace update` 拿最新 |
 | 你寫 product code | Plugin hooks 自動 enforce SSOT(import DS internals 攔截 / canonical drift 警告 / story 規範等) |
-| Push main | `audit.yml` tsc + lint:imports + build / `deploy.yml` apps Netlify / Storybook netlify.toml auto-rebuild |
+| Push main | `audit.yml` tsc + lint:imports + build / apps + Storybook 經 `netlify.toml`(Netlify Git integration)auto-rebuild |
 
 ---
 
@@ -172,11 +172,11 @@ Plugin install 後自動執行的合規 gate(逐 phase):
 | Phase | Gate | 自動 trigger |
 |---|---|---|
 | Edit time | Hook `check_substantive_edit_approval_preflight.sh` | Pre-write 攔 SSOT-affecting edit 需 user approval |
-| Edit time | Hook `check_ssot_consultation.sh` / `auto_regen_ds_barrel.sh` | 偵 import / canonical drift |
+| Edit time | Hook `check_canonical_propagation.sh` / `auto_regen_ds_barrel.sh` | 偵 import / canonical drift |
 | Pre-commit | `audit-content-quality.mjs` | DS spec 一致性 |
 | CI(push)| `audit.yml` tsc + lint:imports + build | 攔語法 / 邊界 |
 | Pre-deploy | Storybook smoke + visual baseline(via DS repo CI) | 視覺 drift |
-| 季度 / 大改 | `/design-system-audit --deep` skill | 82 dim 全掃 |
+| 季度 / 大改 | `/design-system-audit --deep` skill | 88 dim 全掃 |
 
 → **Claude 寫 code 時 plugin hooks 自動 fire,user 不必每次提醒,違規 = 立即 BLOCKER**。
 
@@ -202,6 +202,5 @@ Vite + React 19 + TypeScript + Tailwind v4 + Storybook 8.6 + `@qijenchen/design-
 ## CI
 
 - `audit.yml` — tsc + lint:imports + build per push/PR
-- `deploy.yml` — `apps/template/dist` per-app Netlify(需 NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID_TEMPLATE secrets)
-- `netlify.toml` — Storybook Netlify Git integration(無需 secret,直接讀 build command + access headers)
+- `netlify.toml` — apps + Storybook Netlify Git integration(無需 secret,直接讀 build command + access headers)— 無獨立 `deploy.yml` workflow,deploy 全經 Netlify Git integration
 - `sync-design-system.yml` — Dependabot daily + repository_dispatch(DS release 自動 bump deps)

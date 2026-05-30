@@ -1,5 +1,6 @@
 {
-  "name": "ui-playground",
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "ds-product-template",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
@@ -9,10 +10,15 @@
     "6006": { "label": "Storybook", "onAutoForward": "openPreview" },
     "5173": { "label": "Vite Dev", "onAutoForward": "notify" }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y jq && npm install -g @anthropic-ai/claude-code netlify-cli && npm ci && node scripts/sync-memory.mjs --reverse && bash .devcontainer/onboard-banner.sh",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y jq && npm install -g @anthropic-ai/claude-code netlify-cli && npm install --legacy-peer-deps && bash .devcontainer/onboard-banner.sh",
   "customizations": {
     "vscode": {
-      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "unifiedjs.vscode-mdx"
+      ]
     }
   },
   "remoteUser": "node"
