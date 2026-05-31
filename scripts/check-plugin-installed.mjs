@@ -13,21 +13,36 @@
  * - DS-side SessionStart hook(check_fork_user_plugin_install.sh)會二次攔截
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
 
 const HOME = homedir()
 const CWD = process.cwd()
 
-const PLUGIN_PATHS = [
-  resolve(HOME, '.claude/plugins/design-system'),
-  resolve(HOME, '.claude/plugins/design-system@qijenchen-ds'),
-  resolve(CWD, '.claude/plugins/design-system'),
-  resolve(CWD, '.claude/plugins/design-system@qijenchen-ds'),
-]
+// 2026-05-31 fix(infra-audit P1):原查 `~/.claude/plugins/design-system` 等路徑 = Claude Code 從不建,
+// 偵測永遠 false → fork user 正確裝 plugin 後 production-edit BLOCKER 仍永久誤擋。真實 layout:
+// marketplace 記在 `~/.claude/plugins/known_marketplaces.json`(keyed by marketplace name)+ cloned 到
+// `~/.claude/plugins/marketplaces/<name>/`。我們 marketplace name = `qijenchen-ds`(per .claude-plugin/marketplace.json)。
+const MARKETPLACE = 'qijenchen-ds'
 
-const installed = PLUGIN_PATHS.some(p => existsSync(p))
+function pluginInstalled() {
+  // (1) marketplace cloned dir(install 後最可靠 signal)
+  if (existsSync(resolve(HOME, '.claude/plugins/marketplaces', MARKETPLACE))) return true
+  if (existsSync(resolve(CWD, '.claude/plugins/marketplaces', MARKETPLACE))) return true
+  // (2) known_marketplaces.json 含我們 marketplace key(marketplace add 後記錄)
+  for (const km of [resolve(HOME, '.claude/plugins/known_marketplaces.json'), resolve(CWD, '.claude/plugins/known_marketplaces.json')]) {
+    try { if (JSON.parse(readFileSync(km, 'utf8'))?.[MARKETPLACE]) return true } catch { /* absent / unparseable */ }
+  }
+  // (3) legacy / 舊 layout fallback(向後相容,不誤判但也不漏)
+  return [
+    resolve(HOME, '.claude/plugins/design-system'),
+    resolve(HOME, `.claude/plugins/design-system@${MARKETPLACE}`),
+    resolve(CWD, '.claude/plugins/design-system'),
+  ].some(p => existsSync(p))
+}
+
+const installed = pluginInstalled()
 
 if (installed) {
   console.log('✓ @qijenchen/design-system plugin detected — DS governance hooks active.')
@@ -59,7 +74,7 @@ ${BOLD}修法(用 Claude Code 開本 repo 後第一件事):${RESET}
 ${BOLD}Plugin install 後拿到:${RESET}
   ✓ 59 個 DS governance hooks(自動 fire,dynamic — 跟 DS repo 同步)
   ✓ 22 個 skills(/prototype / /component-quality-gate / /design-system-audit 等)
-  ✓ DS canonical(31 M-rules + 82 audit dims + ssot-index)cross-load
+  ✓ DS canonical(31 M-rules + 88 audit dims + ssot-index)cross-load
   ✓ App.tsx 憑記憶寫 mock 會被 mechanical BLOCKER 攔
 
 ${YELLOW}注意:本 script 不 exit 1(避免擋 npm install / CI / Netlify build)。

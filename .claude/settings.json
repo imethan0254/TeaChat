@@ -1,6 +1,6 @@
 {
   "defaultMode": "auto",
-  "_comment_plugin_setup": "First-time setup: run `/plugin marketplace add github:ajenchen/design-system` in Claude Code → then `/plugin install design-system@qijenchen-ds`. Plugin auto-enables thereafter (Phase 7 marketplace flow,per design-system .claude-plugin/marketplace.json).",
+  "_comment_plugin_setup": "First-time setup: run `/plugin marketplace add github:ajenchen/design-system` in Claude Code → then `/plugin install design-system@qijenchen-ds`. Plugin auto-enables thereafter (Phase 7 marketplace flow,per design-system .claude-plugin/marketplace.json). Bootstrap hooks 在 plugin 裝好前先補 first-time mechanical gate(committed in fork,不依賴 plugin)。",
   "permissions": {
     "allow": [
       "Bash(npm install)",
@@ -8,6 +8,29 @@
       "Bash(npm run *)",
       "Bash(npx *)",
       "Bash(git *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/check_plugin_bootstrap.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_production_edit_without_plugin.sh\""
+          }
+        ]
+      }
     ]
   }
 }

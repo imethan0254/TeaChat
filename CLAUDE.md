@@ -22,6 +22,8 @@ per 2026-05-27 user verbatim「fork template 必須要能跟 ds repo 完全 ssot
 /plugin install design-system@qijenchen-ds
 ```
 
+> **2026-05-30 機械強制**:本規則現由 fork 自帶(不依賴 plugin)的 bootstrap hook 落地 —— `.claude/hooks/check_plugin_bootstrap.sh`(SessionStart 每 session 提醒)+ `block_production_edit_without_plugin.sh`(PreToolUse **硬攔** `apps/**` production edit,沒裝 plugin 直接 BLOCK)。補「plugin 硬 hook 隨 plugin 才裝」的 chicken-egg。極罕見純 prototype 才用 escape `CLAUDE_BYPASS_PLUGIN_BOOTSTRAP=1`。
+
 **之後同步用**:`npm run sync-all`(per critical step 1)。
 
 **沒裝後果**(2026-05-26 anchor case):
