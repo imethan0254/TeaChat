@@ -1,5 +1,5 @@
 // @anatomy-exempt: DS canonical proxy portal (per 2026-05-27 M31 codex synthesis)
-// @consumer-catalog-allow: documented proxy portal — links/iframes 到 DS Storybook,不 hand-mock DS components(per M31 codex synthesis)
+// @consumer-catalog-allow: documented proxy portal — link 到 DS Storybook,不 hand-mock DS components(per M31 codex synthesis)
 /**
  * AllDsComponents.stories.tsx — DS canonical Storybook proxy portal
  *
@@ -8,7 +8,7 @@
  * 規則(SSOT):
  *   1. DS owns per-component canonical pixels — 62/62 components 三層 stories(展示/設計規格/設計原則)在 DS Storybook
  *   2. PW(consumer template)只 owns 真實業務 composition demos(AppShell Dashboard 等)
- *   3. 想看「所有 DS 元件」default render → iframe / link 連 DS deployed Storybook
+ *   3. 想看「所有 DS 元件」default render → link 連 DS deployed Storybook(2026-06-03 移除壞掉+冗餘的 iframe 嵌入:在合併部署裡 iframe 等於把同一 Storybook 嵌進自己 → X-Frame-Options SAMEORIGIN 下渲染失敗,且連結指標 Import Smoke 已有一份)
  *   4. **禁** PW 重寫 `<DS.X minimal props>` — 必 drift(2026-05-27 5+ bug 錨例:CircularProgress size=32 / RadioGroup raw item 沒 SelectionItem / DataTable one-col / LinkInput placeholder mock / Empty 缺 icon)
  *   5. Mechanical 強制:hook `check-consumer-no-ds-catalog.mjs` + `check-consumer-story-baseline.mjs` (DS 0.1.0-beta.26+)
  *
@@ -18,7 +18,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import * as DS from '@qijenchen/design-system'
 
-// Dynamic 316 export count — import smoke only, no render
+// Dynamic export count(不寫死數字,隨 DS public API 增減)— import smoke only, no render
 const allKeys = Object.keys(DS).sort()
 const components = allKeys.filter(k => /^[A-Z]/.test(k))
 const hooks = allKeys.filter(k => k.startsWith('use'))
@@ -35,8 +35,9 @@ export default meta
 type Story = StoryObj
 
 export const ImportSmoke: Story = {
-  name: '316 export import smoke',
+  name: 'DS 公開 API import smoke',
   render: () => (
+    // @layout-space-magic-ok: portal 入口 dev artifact(import smoke + export dump)debug 外框,非 consumer 產品 layout,不適用 layoutSpace 親疏 token
     <div className="p-6 space-y-4" data-testid="all-ds-import-smoke">
       <h1 className="text-h3">DS Public API — Import Smoke</h1>
       <p className="text-body">
@@ -52,31 +53,9 @@ export const ImportSmoke: Story = {
       </p>
       <details className="text-caption">
         <summary className="cursor-pointer">Full export list ({allKeys.length})</summary>
+        {/* @layout-space-magic-ok: export list debug dump(dev artifact)— code-block 內距,非 consumer 產品 layout,不適用 layoutSpace 親疏 token */}
         <pre className="mt-2 p-2 bg-neutral-1 rounded text-fg-secondary break-all">{allKeys.join(', ')}</pre>
       </details>
-    </div>
-  ),
-}
-
-export const DsCanonicalPortal: Story = {
-  name: 'DS Storybook 跳轉',
-  render: () => (
-    <div className="p-6 space-y-4" data-testid="ds-canonical-portal">
-      <h1 className="text-h3">DS Component Canonical — 跳到 DS Storybook</h1>
-      <p className="text-body text-fg-secondary">
-        想看每個 DS 元件預設 render / 互動 / 設計原則 → DS canonical Storybook 是唯一 SSOT.
-        Consumer 不該在 PW 重寫 minimal mock(會 drift)。
-      </p>
-      <iframe
-        src={DS_STORYBOOK_URL}
-        className="w-full border border-divider rounded-md"
-        style={{ height: '70vh' }}
-        title="DS Storybook canonical"
-      />
-      <p className="text-caption text-fg-secondary">
-        iframe 載入失敗 → 開新分頁:{' '}
-        <a href={DS_STORYBOOK_URL} target="_blank" rel="noopener" className="text-info underline">{DS_STORYBOOK_URL}</a>
-      </p>
     </div>
   ),
 }
