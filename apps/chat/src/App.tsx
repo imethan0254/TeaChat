@@ -1,19 +1,10 @@
 // Chat prototype — 3-column messaging UI(Nav rail / Chat list / Conversation)
 // 對齊 DS canonical「走 DS primitive composition」+ 視覺 token 全走 DS semantic tokens。
 //
-// SSOT 鐵律:
-//   - Consumer 只 import `@qijenchen/design-system` public exports
-//   - 禁修改 DS source(走 fork DS repo)
-//   - 聊天 UI 全用 DS primitives 組(Avatar / ProfileCard / Button / Tooltip / Popover
-//     / DropdownMenu / ScrollArea / Separator / Textarea / Badge),不自寫 widget bypass
-//   - 視覺 token 透過 DS `@qijenchen/design-system/styles/tokens` 載入,App-level 只 compose
-//
-// Language canonical:UI 文案一律英文;人名走「English + 中文」格式;聊天室名稱可混雜中文(自定義資訊)。
-//
 // Layout(由左而右):
-//   1. Nav rail   — 產品 logo / Home / Chat(未讀 badge)/ avatar / more
-//   2. Chat list  — Chats header + Favorites / Chats sections(DM + general rooms)
-//   3. Conversation — header bar / message area(bubbles + hover reaction bar)/ input box
+//   1. Nav rail   — 48px 寬 / 32px icon button / neutral-2 active / Settings modal
+//   2. Chat list  — 可拖拉寬度 / 兩種列表樣式(preview toggle)
+//   3. Conversation — header / message area / input box
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -38,6 +29,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   ResizeHandle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Switch,
 } from '@qijenchen/design-system'
 import {
   Home,
@@ -64,43 +61,64 @@ import {
   AppWindow,
   LogOut,
   Maximize2,
+  Settings,
+  HelpCircle,
 } from 'lucide-react'
 
-// ── 共用小工具:icon button + tooltip(所有按鈕 hover 皆給 tooltip) ───────────
-function IconBtn({
+// ── 共用 icon button — 32×32px(size="md" iconOnly = h-field-md = 32px in md density) ──
+function NavBtn({
   icon,
   label,
+  active,
   onClick,
-  badge,
-  variant = 'text',
-  className,
+  overlayBadge,
 }: {
   icon: React.ComponentProps<typeof Button>['startIcon']
   label: string
+  active?: boolean
   onClick?: () => void
-  badge?: React.ReactNode
-  variant?: 'text' | 'tertiary' | 'primary'
-  className?: string
+  overlayBadge?: React.ReactNode
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant={variant}
+          variant="text"
           size="md"
           iconOnly
           startIcon={icon}
-          badge={badge}
           aria-label={label}
           onClick={onClick}
-          className={className}
+          overlayBadge={overlayBadge}
+          className={active ? '!bg-neutral-selected' : ''}
         />
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+// Chat list header button — 28×28px(size="sm" iconOnly = h-field-sm = 28px in md density)
+function ListBtn({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ComponentProps<typeof Button>['startIcon']
+  label: string
+  onClick?: () => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="text" size="sm" iconOnly startIcon={icon} aria-label={label} onClick={onClick} />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
 }
 
+// Conversation / message area small button
 function IconBtnSm({
   icon,
   label,
@@ -123,18 +141,18 @@ type Presence = 'online' | 'away' | 'busy' | 'offline'
 type Color = 'blue' | 'green' | 'purple' | 'magenta' | 'turquoise' | 'indigo' | 'red'
 
 type Person = {
-  name: string // "English 中文"
+  name: string
   color: Color
   status: Presence
   role: string
   email: string
-  avatar: string // 頭像照片 URL(人物 / DM avatar 一律真實照片,貫穿整個 prototype)
+  avatar: string
 }
 
 type Reaction = { emoji: string; count: number }
 type Message = {
   id: string
-  author: 'me' | string // person key for DM/general
+  author: 'me' | string
   text: string
   time: string
   reactions?: Reaction[]
@@ -147,8 +165,8 @@ type Room = {
   title: string
   section: 'favorites' | 'chats'
   unread: boolean
-  person?: Person // dm
-  memberKeys?: string[] // general
+  person?: Person
+  memberKeys?: string[]
   messages: Message[]
 }
 
@@ -162,7 +180,6 @@ const PEOPLE: Record<string, Person> = {
   yui: { name: 'Watanabe Yui 渡邊結衣', color: 'red', status: 'away', role: 'QA Lead', email: 'yui@teachat.app', avatar: 'https://i.pravatar.cc/96?img=20' },
 }
 
-// 目前使用者(「我」)— 同走真實照片 avatar
 const ME: Person = { name: 'Me 我', color: 'green', status: 'online', role: 'You', email: 'me@teachat.app', avatar: 'https://i.pravatar.cc/96?img=8' }
 
 const ROOMS: Room[] = [
@@ -199,8 +216,8 @@ const ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.ai,
     messages: [
-      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: 'Yesterday', replies: 2 },
-      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: 'Yesterday' },
+      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', replies: 2 },
+      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '5/28' },
     ],
   },
   {
@@ -210,7 +227,7 @@ const ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     person: PEOPLE.ran,
-    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: 'Wed' }],
+    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: '5/25' }],
   },
   {
     id: 'product-team',
@@ -231,13 +248,13 @@ const ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     memberKeys: ['kenji', 'yui'],
-    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: 'Mon' }],
+    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '5/26' }],
   },
 ]
 
 const COMMON_EMOJI = ['👍', '❤️', '😂', '🎉']
 
-// ── Person avatar(hover → ProfileCard,DS canonical avatar.hoverCard)──────────
+// ── Avatar helpers ────────────────────────────────────────────────────────────
 function makeProfileCard(p: Person) {
   return (
     <ProfileCard
@@ -254,7 +271,7 @@ function makeProfileCard(p: Person) {
   )
 }
 
-function PersonAvatar({ person, size = 36 }: { person: Person; size?: number }) {
+function PersonAvatar({ person, size = 32 }: { person: Person; size?: number }) {
   return (
     <Avatar
       src={person.avatar}
@@ -267,10 +284,8 @@ function PersonAvatar({ person, size = 36 }: { person: Person; size?: number }) 
   )
 }
 
-// 多人聊天室 avatar:統一 neutral-6 底 + 白色「多人對話」icon(MessagesSquare,非人物意象)。
-// DS Avatar 原生 neutral 只給 --muted(subtle)或 neutral-9(solid),皆非 neutral-6;
-// 故 consumer 端用 arbitrary-value className override 內層底色到 neutral-6 token + 白色前景。
-function GroupAvatar({ size = 36 }: { size?: number }) {
+// 多人聊天室:neutral-6 底 + MessagesSquare icon(多人對話意象,貫穿整個 prototype)
+function GroupAvatar({ size = 32 }: { size?: number }) {
   return (
     <Avatar
       icon={MessagesSquare}
@@ -282,19 +297,99 @@ function GroupAvatar({ size = 36 }: { size?: number }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 1. Nav rail
+// Settings modal — 兩欄結構:左側 nav / 右側 panel
+// ════════════════════════════════════════════════════════════════════════════
+function SettingsModal({
+  open,
+  onOpenChange,
+  showPreview,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  showPreview: boolean
+  onConfirm: (v: boolean) => void
+}) {
+  // 本地 draft state:確認前不套用
+  const [draft, setDraft] = useState(showPreview)
+
+  // 每次 modal 開啟時 sync draft
+  useEffect(() => {
+    if (open) setDraft(showPreview)
+  }, [open, showPreview])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+        <div className="flex h-[480px]">
+          {/* 左側 nav */}
+          <nav className="flex w-44 shrink-0 flex-col gap-0.5 border-r border-divider bg-surface p-3">
+            <p className="px-2 pb-1 pt-0.5 text-caption font-semibold uppercase tracking-wide text-fg-secondary">
+              Settings
+            </p>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md bg-neutral-selected px-2 py-1.5 text-left text-body font-medium text-foreground"
+            >
+              <MessagesSquare size={15} />
+              Chats
+            </button>
+          </nav>
+
+          {/* 右側 panel */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <DialogHeader className="border-b border-divider px-6 py-4">
+              <DialogTitle>Chats list</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {/* Setting item: show message previews */}
+              <div className="flex items-center justify-between gap-4 rounded-lg py-3">
+                <div>
+                  <p className="text-body font-medium">Show message previews for chats</p>
+                  <p className="text-caption text-fg-secondary mt-0.5">
+                    Display the latest message below each chat name
+                  </p>
+                </div>
+                <Switch
+                  checked={draft}
+                  onCheckedChange={setDraft}
+                  aria-label="Show message previews for chats"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="border-t border-divider px-6 py-3">
+              <Button variant="text" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  onConfirm(draft)
+                  onOpenChange(false)
+                }}
+              >
+                Save changes
+              </Button>
+            </DialogFooter>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 1. Nav rail — 48px 寬 / 32×32px buttons / neutral-2 active state
 // ════════════════════════════════════════════════════════════════════════════
 function Logo() {
-  // 六邊形(pointy-top hexagon)帶圓角:六頂點各以短 quadratic 倒角,維持等邊視覺。
   return (
-    <svg width={32} height={32} viewBox="0 0 32 32" aria-label="TeaChat" role="img">
+    <svg width={28} height={28} viewBox="0 0 32 32" aria-label="TeaChat" role="img">
       <defs>
         <linearGradient id="teachat-logo" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#22d3ee" />
           <stop offset="100%" stopColor="#1e3a8a" />
         </linearGradient>
       </defs>
-      {/* Regular hexagon(pointy-top),每個角 ~2px 圓角 */}
       <path
         d="M16 3.2 Q16.9 3.2 17.7 3.7 L26.3 8.6 Q27.1 9.1 27.1 10.1 L27.1 21.9 Q27.1 22.9 26.3 23.4 L17.7 28.3 Q16.9 28.8 16 28.8 Q15.1 28.8 14.3 28.3 L5.7 23.4 Q4.9 22.9 4.9 21.9 L4.9 10.1 Q4.9 9.1 5.7 8.6 L14.3 3.7 Q15.1 3.2 16 3.2 Z"
         fill="url(#teachat-logo)"
@@ -303,73 +398,84 @@ function Logo() {
   )
 }
 
-function NavRail({ unreadCount }: { unreadCount: number }) {
+function NavRail({
+  unreadCount,
+  onOpenSettings,
+}: {
+  unreadCount: number
+  onOpenSettings: () => void
+}) {
   const [tab, setTab] = useState<'home' | 'chat'>('chat')
+
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-stretch gap-1 border-r border-divider bg-surface py-2">
-      <div className="flex justify-center px-2 py-1">
+    // Nav rail: 48px 寬(w-12)
+    <nav className="flex w-12 shrink-0 flex-col items-center border-r border-divider bg-surface py-2">
+      {/* Logo */}
+      <div className="flex h-10 items-center justify-center">
         <Logo />
       </div>
-      <div className="px-2 py-1">
+      <div className="w-8 py-1">
         <Separator />
       </div>
-      {/* Home / Chat tabs(可點擊區與 rail 左右各留 8px = px-2)*/}
-      <div className="flex flex-col gap-1 px-2">
-        <IconBtn
+
+      {/* Navigation tabs */}
+      <div className="flex flex-col gap-1 py-1">
+        <NavBtn
           icon={Home}
           label="Home"
-          variant={tab === 'home' ? 'tertiary' : 'text'}
+          active={tab === 'home'}
           onClick={() => setTab('home')}
-          className="w-full"
         />
-        {/* Chat:未讀數 badge 蓋在 icon 右上角(不與 icon 並排)— 世界級 chat app idiom */}
-        <div className="relative">
-          <IconBtn
-            icon={MessageCircle}
-            label="Chat"
-            variant={tab === 'chat' ? 'tertiary' : 'text'}
-            onClick={() => setTab('chat')}
-            className="w-full"
-          />
-          {unreadCount > 0 && (
-            <Badge
-              variant="critical"
-              count={unreadCount}
-              max={99}
-              className="pointer-events-none absolute right-2 top-0.5"
-              style={{ boxShadow: '0 0 0 2px var(--surface)' }}
-            />
-          )}
-        </div>
+        <NavBtn
+          icon={MessageCircle}
+          label="Chat"
+          active={tab === 'chat'}
+          onClick={() => setTab('chat')}
+          overlayBadge={
+            unreadCount > 0
+              ? <Badge variant="critical" count={unreadCount} max={99} />
+              : undefined
+          }
+        />
       </div>
-      {/* 底部:avatar + more(more 上方不放分隔線)*/}
-      <div className="mt-auto flex flex-col gap-1 px-2">
-        <div className="flex justify-center py-1">
-          <Avatar
-            src={ME.avatar}
-            alt={ME.name}
-            color={ME.color}
-            status={ME.status}
-            size={32}
-            hoverCard={makeProfileCard(ME)}
-          />
-        </div>
+
+      {/* Bottom: More → Settings → modal (top), then Avatar (bottom) */}
+      <div className="mt-auto flex flex-col items-center gap-1 py-1">
+        {/* More button — Settings 在 dropdown 中 */}
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="text" size="md" iconOnly startIcon={MoreHorizontal} aria-label="More" className="w-full" />
+                <Button
+                  variant="text"
+                  size="md"
+                  iconOnly
+                  startIcon={MoreHorizontal}
+                  aria-label="More"
+                />
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>More</TooltipContent>
+            <TooltipContent side="right">More</TooltipContent>
           </Tooltip>
-          <DropdownMenuContent align="start" side="right">
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Help</DropdownMenuItem>
+          <DropdownMenuContent align="end" side="right">
+            <DropdownMenuItem startIcon={Settings} onSelect={onOpenSettings}>
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem startIcon={HelpCircle}>Help</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
+            <DropdownMenuItem startIcon={LogOut}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Me avatar */}
+        <Avatar
+          src={ME.avatar}
+          alt={ME.name}
+          color={ME.color}
+          status={ME.status}
+          size={32}
+          hoverCard={makeProfileCard(ME)}
+        />
       </div>
     </nav>
   )
@@ -384,7 +490,7 @@ function AddPopover() {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="text" size="md" iconOnly startIcon={Plus} aria-label="Add" />
+            <Button variant="text" size="sm" iconOnly startIcon={Plus} aria-label="Add" />
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent>Add</TooltipContent>
@@ -401,6 +507,7 @@ function AddPopover() {
   )
 }
 
+// Section header — 首字大寫其餘小寫(title case handled at call site)
 function Section({
   label,
   open,
@@ -417,7 +524,7 @@ function Section({
       <button
         type="button"
         onClick={onToggle}
-        className="flex flex-1 items-center gap-1 rounded-md py-1 text-caption font-semibold uppercase tracking-wide text-fg-secondary hover:text-foreground"
+        className="flex flex-1 items-center gap-1 rounded-md py-1 text-caption font-semibold text-fg-secondary hover:text-foreground"
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         {label}
@@ -447,9 +554,7 @@ function RoomMoreMenu({ type }: { type: 'dm' | 'general' }) {
         {type === 'general' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem startIcon={LogOut} className="text-fg-error">
-              Leave
-            </DropdownMenuItem>
+            <DropdownMenuItem startIcon={LogOut} className="text-fg-error">Leave</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
@@ -457,47 +562,90 @@ function RoomMoreMenu({ type }: { type: 'dm' | 'general' }) {
   )
 }
 
+// ── RoomRow — 兩種樣式由 showPreview 控制 ──────────────────────────────────
+// showPreview=true(預設):32×32 avatar + name(14px) + 時間 + 第二行訊息預覽(12px, neutral-8)
+// showPreview=false:20×20 avatar + name(14px) compact
 function RoomRow({
   room,
   active,
   onSelect,
+  showPreview,
 }: {
   room: Room
   active: boolean
   onSelect: (id: string) => void
+  showPreview: boolean
 }) {
+  const latestMsg = room.messages[room.messages.length - 1]
+  const latestAuthor = latestMsg?.author === 'me' ? 'You' : (PEOPLE[latestMsg?.author]?.name.split(' ')[0] ?? '')
+  const previewText = latestMsg ? `${latestAuthor}: ${latestMsg.text}` : ''
+
+  const avatarSize = showPreview ? 32 : 20
+
   return (
     <div
-      className={`group relative flex items-center gap-2.5 rounded-lg px-2 py-2 cursor-pointer ${
-        active ? 'bg-neutral-selected' : 'hover:bg-neutral-hover'
-      }`}
+      className={`group relative flex cursor-pointer items-center gap-2.5 rounded-lg px-2 cursor-pointer ${
+        showPreview ? 'py-2' : 'py-1.5'
+      } ${active ? 'bg-neutral-selected' : 'hover:bg-neutral-hover'}`}
       onClick={() => onSelect(room.id)}
     >
+      {/* Avatar */}
       {room.type === 'dm' && room.person ? (
-        <PersonAvatar person={room.person} size={36} />
+        <PersonAvatar person={room.person} size={avatarSize} />
       ) : (
-        <GroupAvatar size={36} />
+        <GroupAvatar size={avatarSize} />
       )}
-      <span className={`min-w-0 flex-1 truncate text-body ${room.unread ? 'font-bold' : 'font-normal'}`}>
-        {room.title}
-      </span>
 
-      {/* 未讀紅點(hover 時被 more 暫時遮擋)*/}
+      {/* Text content */}
+      {showPreview ? (
+        // Preview mode: two-line
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-baseline justify-between gap-1">
+            <span
+              className="truncate text-foreground"
+              style={{ fontSize: 14, fontWeight: room.unread ? 600 : 400 }}
+            >
+              {room.title}
+            </span>
+            <span className="shrink-0 text-fg-secondary" style={{ fontSize: 12 }}>
+              {latestMsg?.time ?? ''}
+            </span>
+          </div>
+          <p
+            className="truncate text-fg-secondary"
+            style={{ fontSize: 12, color: 'var(--color-neutral-8)' }}
+          >
+            {previewText}
+          </p>
+        </div>
+      ) : (
+        // Compact mode: single line
+        <span
+          className="min-w-0 flex-1 truncate text-foreground"
+          style={{ fontSize: 14, fontWeight: room.unread ? 600 : 400 }}
+        >
+          {room.title}
+        </span>
+      )}
+
+      {/* 未讀紅點(hover 時被 more 遮擋) */}
       {room.unread && (
-        <span className="group-hover:hidden">
+        <span className="group-hover:hidden shrink-0">
           <Badge dot variant="critical" />
         </span>
       )}
 
-      {/* hover → more 按鈕 */}
-      <div className="absolute right-2 hidden group-hover:block" onClick={(e) => e.stopPropagation()}>
+      {/* hover → more */}
+      <div
+        className="absolute right-2 hidden group-hover:block"
+        onClick={(e) => e.stopPropagation()}
+      >
         <RoomMoreMenu type={room.type} />
       </div>
     </div>
   )
 }
 
-// Chat list 寬度 drag-resize 邊界(預設 320,可拖拉)
 const CHAT_LIST_MIN = 260
 const CHAT_LIST_MAX = 480
 
@@ -507,12 +655,14 @@ function ChatList({
   onCollapse,
   width,
   onWidthChange,
+  showPreview,
 }: {
   activeId: string
   onSelect: (id: string) => void
   onCollapse: () => void
   width: number
   onWidthChange: (w: number) => void
+  showPreview: boolean
 }) {
   const [openFav, setOpenFav] = useState(true)
   const [openChats, setOpenChats] = useState(true)
@@ -520,15 +670,13 @@ function ChatList({
   const favorites = ROOMS.filter((r) => r.section === 'favorites')
   const chats = ROOMS.filter((r) => r.section === 'chats')
 
-  // Drag-resize:ResizeHandle 提供視覺 / a11y,consumer 自管 width 計算(對齊 DS pattern doc)
   function startResize(e: React.PointerEvent) {
     e.preventDefault()
     const startX = e.clientX
     const startW = width
     setDragging(true)
     const onMove = (ev: PointerEvent) => {
-      const next = Math.max(CHAT_LIST_MIN, Math.min(CHAT_LIST_MAX, startW + (ev.clientX - startX)))
-      onWidthChange(next)
+      onWidthChange(Math.max(CHAT_LIST_MIN, Math.min(CHAT_LIST_MAX, startW + (ev.clientX - startX))))
     }
     const onUp = () => {
       setDragging(false)
@@ -541,37 +689,36 @@ function ChatList({
 
   return (
     <aside className="relative flex shrink-0 flex-col border-r border-divider bg-surface" style={{ width }}>
-      {/* Header — Chats + actions(右→左:collapse / search / add)。
-          下方 full-bleed(無 padding)分隔線與 list 內容區隔 */}
-      <header className="flex items-center gap-1 border-b border-divider px-3 py-2.5">
-        <h2 className="flex-1 truncate text-body-lg font-semibold">Chats</h2>
-        <AddPopover />
-        <IconBtn icon={Search} label="Search" />
-        <IconBtn icon={PanelLeftClose} label="Collapse sidebar" onClick={onCollapse} />
+      {/* Header — Chats(16px) + 28px buttons(gap-2 = 8px) */}
+      <header className="flex items-center border-b border-divider px-3 py-2">
+        <h2 className="flex-1 truncate font-semibold" style={{ fontSize: 16 }}>Chats</h2>
+        <div className="flex items-center gap-2">
+          <AddPopover />
+          <ListBtn icon={Search} label="Search" />
+          <ListBtn icon={PanelLeftClose} label="Collapse sidebar" onClick={onCollapse} />
+        </div>
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-2 pb-3">
+          {/* "Favorites" — 首字大寫, 其餘小寫 */}
           <Section label="Favorites" open={openFav} onToggle={() => setOpenFav((v) => !v)} />
-          {openFav &&
-            favorites.map((r) => (
-              <RoomRow key={r.id} room={r} active={r.id === activeId} onSelect={onSelect} />
-            ))}
+          {openFav && favorites.map((r) => (
+            <RoomRow key={r.id} room={r} active={r.id === activeId} onSelect={onSelect} showPreview={showPreview} />
+          ))}
 
           <Section
             label="Chats"
             open={openChats}
             onToggle={() => setOpenChats((v) => !v)}
-            trailing={<IconBtn icon={Plus} label="Add chat" />}
+            trailing={<ListBtn icon={Plus} label="Add chat" />}
           />
-          {openChats &&
-            chats.map((r) => (
-              <RoomRow key={r.id} room={r} active={r.id === activeId} onSelect={onSelect} />
-            ))}
+          {openChats && chats.map((r) => (
+            <RoomRow key={r.id} room={r} active={r.id === activeId} onSelect={onSelect} showPreview={showPreview} />
+          ))}
         </div>
       </ScrollArea>
 
-      {/* 右緣 drag-resize handle(調整 chat list 寬度)*/}
       <ResizeHandle
         direction="horizontal"
         position="end"
@@ -597,7 +744,6 @@ function TeamsCallButton() {
   )
 }
 
-// group user icon + 成員數(灰字 + 圓角方框背景),整體一個可點擊按鈕
 function RoomInfoButton({ count }: { count: number }) {
   return (
     <Tooltip>
@@ -637,9 +783,7 @@ function HeaderMoreMenu({ type }: { type: 'dm' | 'general' }) {
         {type === 'general' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem startIcon={LogOut} className="text-fg-error">
-              Leave
-            </DropdownMenuItem>
+            <DropdownMenuItem startIcon={LogOut} className="text-fg-error">Leave</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
@@ -647,7 +791,6 @@ function HeaderMoreMenu({ type }: { type: 'dm' | 'general' }) {
   )
 }
 
-// 3a. Header bar
 function ConversationHeader({
   room,
   listOpen,
@@ -660,48 +803,55 @@ function ConversationHeader({
   const memberCount = room.memberKeys?.length ?? 0
   return (
     <header className="flex items-center gap-2.5 h-[var(--chrome-header-height)] px-4 border-b border-divider bg-surface">
-      {/* chat list 隱藏時:展開按鈕 + 分隔線(在 avatar 左邊)*/}
       {!listOpen && (
         <>
-          <IconBtn icon={PanelLeftOpen} label="Expand sidebar" onClick={onExpandList} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="text" size="md" iconOnly startIcon={PanelLeftOpen} aria-label="Expand sidebar" onClick={onExpandList} />
+            </TooltipTrigger>
+            <TooltipContent>Expand sidebar</TooltipContent>
+          </Tooltip>
           <Separator orientation="vertical" className="h-6" />
         </>
       )}
-
       {room.type === 'dm' && room.person ? (
         <PersonAvatar person={room.person} size={36} />
       ) : (
         <GroupAvatar size={36} />
       )}
-
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <h1 className="truncate text-body-lg font-semibold">{room.title}</h1>
-        {room.type === 'general' && <IconBtn icon={Pencil} label="Edit chatroom name" />}
+        {room.type === 'general' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="text" size="md" iconOnly startIcon={Pencil} aria-label="Edit chatroom name" />
+            </TooltipTrigger>
+            <TooltipContent>Edit name</TooltipContent>
+          </Tooltip>
+        )}
       </div>
-
-      {/* 右側 actions */}
       <div className="flex items-center gap-1">
         <TeamsCallButton />
         {room.type === 'general' && <RoomInfoButton count={memberCount} />}
-        <IconBtn icon={Search} label="Search" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="text" size="md" iconOnly startIcon={Search} aria-label="Search" />
+          </TooltipTrigger>
+          <TooltipContent>Search</TooltipContent>
+        </Tooltip>
         <HeaderMoreMenu type={room.type} />
       </div>
     </header>
   )
 }
 
-// 3b. Message area
 function ReactionBar() {
   return (
     <div className="absolute -top-4 right-2 z-10 hidden items-center gap-0.5 rounded-lg border border-divider bg-surface-raised p-0.5 shadow-md group-hover/msg:flex">
       {COMMON_EMOJI.map((e) => (
         <Tooltip key={e}>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label={`React ${e}`}
-              className="rounded-md px-1.5 py-1 text-body hover:bg-neutral-hover"
-            >
+            <button type="button" aria-label={`React ${e}`} className="rounded-md px-1.5 py-1 text-body hover:bg-neutral-hover">
               {e}
             </button>
           </TooltipTrigger>
@@ -717,73 +867,48 @@ function ReactionBar() {
   )
 }
 
-function MessageBubble({ room, message }: { room: Room; message: Message }) {
+function MessageBubble({ message }: { message: Message }) {
   const mine = message.author === 'me'
   const author = mine ? null : PEOPLE[message.author] ?? null
 
   return (
     <div className={`group/msg flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-      {/* 對方:avatar + name + time on top */}
       {!mine && author && (
         <div className="mb-1 flex items-center gap-2 pl-11">
           <span className="text-body font-medium">{author.name}</span>
           <span className="text-caption text-fg-secondary">{message.time}</span>
         </div>
       )}
-
       <div className={`flex items-start gap-2 ${mine ? 'flex-row-reverse' : ''} max-w-[78%]`}>
         {!mine && author && <PersonAvatar person={author} size={32} />}
-
         <div className="relative">
-          {/* hover reaction bar — bubble 右上角 */}
           <ReactionBar />
-
-          <div
-            className={`rounded-2xl px-3.5 py-2.5 text-body ${
-              mine
-                ? 'rounded-tr-sm bg-primary-subtle text-foreground'
-                : 'rounded-tl-sm bg-muted text-foreground'
-            }`}
-          >
+          <div className={`rounded-2xl px-3.5 py-2.5 text-body ${
+            mine ? 'rounded-tr-sm bg-primary-subtle text-foreground' : 'rounded-tl-sm bg-muted text-foreground'
+          }`}>
             <p className="whitespace-pre-wrap break-words">{message.text}</p>
-
-            {/* 既有 reactions(顯示在 bubble 底部)*/}
             {message.reactions && message.reactions.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {message.reactions.map((r) => (
-                  <span
-                    key={r.emoji}
-                    className="flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 text-caption"
-                  >
+                  <span key={r.emoji} className="flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 text-caption">
                     <span>{r.emoji}</span>
                     <span className="text-fg-secondary">{r.count}</span>
                   </span>
                 ))}
-                <button
-                  type="button"
-                  aria-label="Add reaction"
-                  className="flex items-center rounded-full bg-surface px-1.5 py-1 text-fg-secondary hover:text-foreground"
-                >
+                <button type="button" aria-label="Add reaction" className="flex items-center rounded-full bg-surface px-1.5 py-1 text-fg-secondary hover:text-foreground">
                   <SmilePlus size={14} />
                 </button>
               </div>
             )}
           </div>
-
-          {/* thread reply indicator(bubble 下方)*/}
           {message.replies != null && message.replies > 0 && (
-            <button
-              type="button"
-              className="mt-1 flex items-center gap-1.5 text-caption text-info-text hover:underline"
-            >
+            <button type="button" className="mt-1 flex items-center gap-1.5 text-caption text-info-text hover:underline">
               <MessagesSquare size={14} />
               {message.replies} replies
             </button>
           )}
         </div>
       </div>
-
-      {/* 我的訊息:time 在泡泡下方 */}
       {mine && <span className="mt-1 pr-1 text-caption text-fg-secondary">{message.time}</span>}
     </div>
   )
@@ -794,14 +919,13 @@ function MessageArea({ room }: { room: Room }) {
     <ScrollArea className="min-h-0 flex-1">
       <div className="flex flex-col gap-5 px-6 py-4">
         {room.messages.map((m) => (
-          <MessageBubble key={m.id} room={room} message={m} />
+          <MessageBubble key={m.id} message={m} />
         ))}
       </div>
     </ScrollArea>
   )
 }
 
-// 3c. Input box(auto-grow,no manual resize;內嵌 send 按鈕)
 function InputBox() {
   const [value, setValue] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -813,9 +937,7 @@ function InputBox() {
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`
   }, [value])
 
-  function send() {
-    setValue('')
-  }
+  function send() { setValue('') }
 
   return (
     <div className="border-t border-divider bg-surface px-4 py-3">
@@ -829,10 +951,7 @@ function InputBox() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
           }}
           className="!resize-none !border-0 !px-0 !py-0 max-h-40"
         />
@@ -843,15 +962,7 @@ function InputBox() {
           <Separator orientation="vertical" className="mx-1 h-5" />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="primary"
-                size="sm"
-                iconOnly
-                startIcon={Send}
-                aria-label="Send"
-                onClick={send}
-                disabled={!value.trim()}
-              />
+              <Button variant="primary" size="sm" iconOnly startIcon={Send} aria-label="Send" onClick={send} disabled={!value.trim()} />
             </TooltipTrigger>
             <TooltipContent>Send</TooltipContent>
           </Tooltip>
@@ -861,15 +972,7 @@ function InputBox() {
   )
 }
 
-function Conversation({
-  room,
-  listOpen,
-  onExpandList,
-}: {
-  room: Room
-  listOpen: boolean
-  onExpandList: () => void
-}) {
+function Conversation({ room, listOpen, onExpandList }: { room: Room; listOpen: boolean; onExpandList: () => void }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-canvas">
       <ConversationHeader room={room} listOpen={listOpen} onExpandList={onExpandList} />
@@ -884,13 +987,15 @@ export default function App() {
   const [activeId, setActiveId] = useState<string>(ROOMS[0].id)
   const [listOpen, setListOpen] = useState(true)
   const [listWidth, setListWidth] = useState(320)
+  const [showPreview, setShowPreview] = useState(true)      // settings state
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const current = ROOMS.find((r) => r.id === activeId) ?? ROOMS[0]
   const unreadCount = ROOMS.filter((r) => r.unread).length
 
   return (
     <TooltipProvider delayDuration={400} skipDelayDuration={200}>
       <div className="flex h-screen w-full overflow-hidden bg-canvas text-foreground">
-        <NavRail unreadCount={unreadCount} />
+        <NavRail unreadCount={unreadCount} onOpenSettings={() => setSettingsOpen(true)} />
         {listOpen && (
           <ChatList
             activeId={activeId}
@@ -898,10 +1003,18 @@ export default function App() {
             onCollapse={() => setListOpen(false)}
             width={listWidth}
             onWidthChange={setListWidth}
+            showPreview={showPreview}
           />
         )}
         <Conversation room={current} listOpen={listOpen} onExpandList={() => setListOpen(true)} />
       </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        showPreview={showPreview}
+        onConfirm={setShowPreview}
+      />
     </TooltipProvider>
   )
 }
