@@ -37,6 +37,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  ResizeHandle,
 } from '@qijenchen/design-system'
 import {
   Home,
@@ -127,6 +128,7 @@ type Person = {
   status: Presence
   role: string
   email: string
+  avatar: string // 頭像照片 URL(人物 / DM avatar 一律真實照片,貫穿整個 prototype)
 }
 
 type Reaction = { emoji: string; count: number }
@@ -151,14 +153,17 @@ type Room = {
 }
 
 const PEOPLE: Record<string, Person> = {
-  shinichi: { name: 'Kudo Shinichi 工藤新一', color: 'blue', status: 'online', role: 'Detective', email: 'shinichi@teachat.app' },
-  ai: { name: 'Haibara Ai 灰原哀', color: 'purple', status: 'busy', role: 'Researcher', email: 'ai@teachat.app' },
-  ran: { name: 'Mouri Ran 毛利蘭', color: 'magenta', status: 'away', role: 'Karate Captain', email: 'ran@teachat.app' },
-  guanyu: { name: 'Chen Guan-Yu 陳冠宇', color: 'green', status: 'online', role: 'Product Manager', email: 'guanyu@teachat.app' },
-  yating: { name: 'Lin Ya-Ting 林雅婷', color: 'turquoise', status: 'offline', role: 'Designer', email: 'yating@teachat.app' },
-  kenji: { name: 'Takahashi Kenji 高橋健二', color: 'indigo', status: 'online', role: 'Engineer', email: 'kenji@teachat.app' },
-  yui: { name: 'Watanabe Yui 渡邊結衣', color: 'red', status: 'away', role: 'QA Lead', email: 'yui@teachat.app' },
+  shinichi: { name: 'Kudo Shinichi 工藤新一', color: 'blue', status: 'online', role: 'Detective', email: 'shinichi@teachat.app', avatar: 'https://i.pravatar.cc/96?img=12' },
+  ai: { name: 'Haibara Ai 灰原哀', color: 'purple', status: 'busy', role: 'Researcher', email: 'ai@teachat.app', avatar: 'https://i.pravatar.cc/96?img=5' },
+  ran: { name: 'Mouri Ran 毛利蘭', color: 'magenta', status: 'away', role: 'Karate Captain', email: 'ran@teachat.app', avatar: 'https://i.pravatar.cc/96?img=9' },
+  guanyu: { name: 'Chen Guan-Yu 陳冠宇', color: 'green', status: 'online', role: 'Product Manager', email: 'guanyu@teachat.app', avatar: 'https://i.pravatar.cc/96?img=13' },
+  yating: { name: 'Lin Ya-Ting 林雅婷', color: 'turquoise', status: 'offline', role: 'Designer', email: 'yating@teachat.app', avatar: 'https://i.pravatar.cc/96?img=16' },
+  kenji: { name: 'Takahashi Kenji 高橋健二', color: 'indigo', status: 'online', role: 'Engineer', email: 'kenji@teachat.app', avatar: 'https://i.pravatar.cc/96?img=33' },
+  yui: { name: 'Watanabe Yui 渡邊結衣', color: 'red', status: 'away', role: 'QA Lead', email: 'yui@teachat.app', avatar: 'https://i.pravatar.cc/96?img=20' },
 }
+
+// 目前使用者(「我」)— 同走真實照片 avatar
+const ME: Person = { name: 'Me 我', color: 'green', status: 'online', role: 'You', email: 'me@teachat.app', avatar: 'https://i.pravatar.cc/96?img=8' }
 
 const ROOMS: Room[] = [
   {
@@ -239,7 +244,7 @@ function makeProfileCard(p: Person) {
       name={p.name}
       subtitle={p.role}
       status={p.status}
-      avatar={{ alt: p.name, color: p.color }}
+      avatar={{ alt: p.name, color: p.color, src: p.avatar }}
       fields={[
         { label: 'Role', value: p.role },
         { label: 'Email', value: p.email },
@@ -252,6 +257,7 @@ function makeProfileCard(p: Person) {
 function PersonAvatar({ person, size = 36 }: { person: Person; size?: number }) {
   return (
     <Avatar
+      src={person.avatar}
       alt={person.name}
       color={person.color}
       status={person.status}
@@ -261,15 +267,25 @@ function PersonAvatar({ person, size = 36 }: { person: Person; size?: number }) 
   )
 }
 
-// 多人聊天室 avatar:統一中性灰底 + 白色 group icon(不給五顏六色)
+// 多人聊天室 avatar:統一 neutral-6 底 + 白色「多人對話」icon(MessagesSquare,非人物意象)。
+// DS Avatar 原生 neutral 只給 --muted(subtle)或 neutral-9(solid),皆非 neutral-6;
+// 故 consumer 端用 arbitrary-value className override 內層底色到 neutral-6 token + 白色前景。
 function GroupAvatar({ size = 36 }: { size?: number }) {
-  return <Avatar icon={Users} color="neutral" solid size={size} shape="circle" />
+  return (
+    <Avatar
+      icon={MessagesSquare}
+      size={size}
+      shape="circle"
+      className="[&>div]:!bg-[var(--color-neutral-6)] [&>div]:!text-[var(--on-emphasis)]"
+    />
+  )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // 1. Nav rail
 // ════════════════════════════════════════════════════════════════════════════
 function Logo() {
+  // 六邊形(pointy-top hexagon)帶圓角:六頂點各以短 quadratic 倒角,維持等邊視覺。
   return (
     <svg width={32} height={32} viewBox="0 0 32 32" aria-label="TeaChat" role="img">
       <defs>
@@ -278,9 +294,9 @@ function Logo() {
           <stop offset="100%" stopColor="#1e3a8a" />
         </linearGradient>
       </defs>
-      {/* 五邊形帶微微圓角 */}
+      {/* Regular hexagon(pointy-top),每個角 ~2px 圓角 */}
       <path
-        d="M16 2.5 L28 11.2 L23.4 25.6 Q22.9 27 21.4 27 L10.6 27 Q9.1 27 8.6 25.6 L4 11.2 Q3.6 9.9 4.8 9 L14.8 2.9 Q15.4 2.5 16 2.5 Z"
+        d="M16 3.2 Q16.9 3.2 17.7 3.7 L26.3 8.6 Q27.1 9.1 27.1 10.1 L27.1 21.9 Q27.1 22.9 26.3 23.4 L17.7 28.3 Q16.9 28.8 16 28.8 Q15.1 28.8 14.3 28.3 L5.7 23.4 Q4.9 22.9 4.9 21.9 L4.9 10.1 Q4.9 9.1 5.7 8.6 L14.3 3.7 Q15.1 3.2 16 3.2 Z"
         fill="url(#teachat-logo)"
       />
     </svg>
@@ -290,7 +306,7 @@ function Logo() {
 function NavRail({ unreadCount }: { unreadCount: number }) {
   const [tab, setTab] = useState<'home' | 'chat'>('chat')
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-stretch gap-1 bg-surface-strong py-2">
+    <nav className="flex w-14 shrink-0 flex-col items-stretch gap-1 border-r border-divider bg-surface py-2">
       <div className="flex justify-center px-2 py-1">
         <Logo />
       </div>
@@ -306,24 +322,36 @@ function NavRail({ unreadCount }: { unreadCount: number }) {
           onClick={() => setTab('home')}
           className="w-full"
         />
-        <IconBtn
-          icon={MessageCircle}
-          label="Chat"
-          variant={tab === 'chat' ? 'tertiary' : 'text'}
-          onClick={() => setTab('chat')}
-          className="w-full"
-          badge={unreadCount > 0 ? <Badge variant="critical" count={unreadCount} max={99} /> : undefined}
-        />
+        {/* Chat:未讀數 badge 蓋在 icon 右上角(不與 icon 並排)— 世界級 chat app idiom */}
+        <div className="relative">
+          <IconBtn
+            icon={MessageCircle}
+            label="Chat"
+            variant={tab === 'chat' ? 'tertiary' : 'text'}
+            onClick={() => setTab('chat')}
+            className="w-full"
+          />
+          {unreadCount > 0 && (
+            <Badge
+              variant="critical"
+              count={unreadCount}
+              max={99}
+              className="pointer-events-none absolute right-2 top-0.5"
+              style={{ boxShadow: '0 0 0 2px var(--surface)' }}
+            />
+          )}
+        </div>
       </div>
       {/* 底部:avatar + more(more 上方不放分隔線)*/}
       <div className="mt-auto flex flex-col gap-1 px-2">
         <div className="flex justify-center py-1">
           <Avatar
-            alt="Me 我"
-            color="green"
-            status="online"
+            src={ME.avatar}
+            alt={ME.name}
+            color={ME.color}
+            status={ME.status}
             size={32}
-            hoverCard={makeProfileCard({ name: 'Me 我', color: 'green', status: 'online', role: 'You', email: 'me@teachat.app' })}
+            hoverCard={makeProfileCard(ME)}
           />
         </div>
         <DropdownMenu>
@@ -469,24 +497,53 @@ function RoomRow({
   )
 }
 
+// Chat list 寬度 drag-resize 邊界(預設 320,可拖拉)
+const CHAT_LIST_MIN = 260
+const CHAT_LIST_MAX = 480
+
 function ChatList({
   activeId,
   onSelect,
   onCollapse,
+  width,
+  onWidthChange,
 }: {
   activeId: string
   onSelect: (id: string) => void
   onCollapse: () => void
+  width: number
+  onWidthChange: (w: number) => void
 }) {
   const [openFav, setOpenFav] = useState(true)
   const [openChats, setOpenChats] = useState(true)
+  const [dragging, setDragging] = useState(false)
   const favorites = ROOMS.filter((r) => r.section === 'favorites')
   const chats = ROOMS.filter((r) => r.section === 'chats')
 
+  // Drag-resize:ResizeHandle 提供視覺 / a11y,consumer 自管 width 計算(對齊 DS pattern doc)
+  function startResize(e: React.PointerEvent) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = width
+    setDragging(true)
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.max(CHAT_LIST_MIN, Math.min(CHAT_LIST_MAX, startW + (ev.clientX - startX)))
+      onWidthChange(next)
+    }
+    const onUp = () => {
+      setDragging(false)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-divider bg-surface">
-      {/* Header — Chats + actions(右→左:collapse / search / add)*/}
-      <header className="flex items-center gap-1 px-3 py-2.5">
+    <aside className="relative flex shrink-0 flex-col border-r border-divider bg-surface" style={{ width }}>
+      {/* Header — Chats + actions(右→左:collapse / search / add)。
+          下方 full-bleed(無 padding)分隔線與 list 內容區隔 */}
+      <header className="flex items-center gap-1 border-b border-divider px-3 py-2.5">
         <h2 className="flex-1 truncate text-body-lg font-semibold">Chats</h2>
         <AddPopover />
         <IconBtn icon={Search} label="Search" />
@@ -513,6 +570,15 @@ function ChatList({
             ))}
         </div>
       </ScrollArea>
+
+      {/* 右緣 drag-resize handle(調整 chat list 寬度)*/}
+      <ResizeHandle
+        direction="horizontal"
+        position="end"
+        isResizing={dragging}
+        aria-label="拖曳調整聊天列表寬度"
+        onPointerDown={startResize}
+      />
     </aside>
   )
 }
@@ -817,6 +883,7 @@ function Conversation({
 export default function App() {
   const [activeId, setActiveId] = useState<string>(ROOMS[0].id)
   const [listOpen, setListOpen] = useState(true)
+  const [listWidth, setListWidth] = useState(320)
   const current = ROOMS.find((r) => r.id === activeId) ?? ROOMS[0]
   const unreadCount = ROOMS.filter((r) => r.unread).length
 
@@ -825,7 +892,13 @@ export default function App() {
       <div className="flex h-screen w-full overflow-hidden bg-canvas text-foreground">
         <NavRail unreadCount={unreadCount} />
         {listOpen && (
-          <ChatList activeId={activeId} onSelect={setActiveId} onCollapse={() => setListOpen(false)} />
+          <ChatList
+            activeId={activeId}
+            onSelect={setActiveId}
+            onCollapse={() => setListOpen(false)}
+            width={listWidth}
+            onWidthChange={setListWidth}
+          />
         )}
         <Conversation room={current} listOpen={listOpen} onExpandList={() => setListOpen(true)} />
       </div>
