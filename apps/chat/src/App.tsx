@@ -104,7 +104,8 @@ function NavBtn({
           className={active ? '!bg-neutral-selected' : ''}
         />
       </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
+      {/* avoidCollisions=false forces right side always — prevents Radix from flipping to top */}
+      <TooltipContent side="right" avoidCollisions={false}>{label}</TooltipContent>
     </Tooltip>
   )
 }
@@ -432,7 +433,7 @@ function NavRail({ unreadCount, onOpenSettings }: { unreadCount: number; onOpenS
                 <Button variant="text" size="md" iconOnly startIcon={MoreHorizontal} aria-label="More" title="" />
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="right">More</TooltipContent>
+            <TooltipContent side="right" avoidCollisions={false}>More</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end" side="right" sideOffset={8}>
             <DropdownMenuItem startIcon={Settings} onSelect={onOpenSettings}>Settings</DropdownMenuItem>
@@ -688,7 +689,8 @@ function ChatList({
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="px-2 pb-3">
+        {/* pl-2 only — row's own px-2 provides 8px right gap from the divider */}
+        <div className="pl-2 pb-3">
           <Section label="Favorites" open={openFav} onToggle={() => setOpenFav((v) => !v)} />
           {openFav && favorites.map((r) => (
             <RoomRow
@@ -804,19 +806,9 @@ function ConversationHeader({
 }) {
   const memberCount = room.memberKeys?.length ?? 0
 
-  // Avatar with optional mute badge overlay
+  // When muted: 32×32 white bg + gray BellOff icon fully replaces the avatar
   const roomAvatar = isMuted ? (
-    // Muted: show the normal avatar but with a BellOff badge overlay
-    <div className="relative shrink-0">
-      {room.type === 'dm' && room.person ? (
-        <PersonAvatar person={room.person} size={36} />
-      ) : (
-        <GroupAvatar size={36} />
-      )}
-      <span className="absolute -bottom-0.5 -right-0.5 z-20 flex items-center justify-center rounded-full bg-surface-raised border border-divider" style={{ width: 16, height: 16 }}>
-        <BellOff size={9} className="text-fg-secondary" />
-      </span>
-    </div>
+    <MutedAvatar size={32} />
   ) : room.type === 'dm' && room.person ? (
     <PersonAvatar person={room.person} size={36} />
   ) : (
@@ -1062,10 +1054,13 @@ function MessageArea({ room, onOpenThread }: { room: Room; onOpenThread: (m: Mes
   const lastMineId = [...room.messages].reverse().find((m) => m.author === 'me')?.id ?? null
   return (
     <ScrollArea className="min-h-0 flex-1">
-      <div className="flex flex-col gap-5 px-6 py-4">
-        {room.messages.map((m) => (
-          <MessageBubble key={m.id} message={m} isLastMine={m.id === lastMineId} onOpenThread={onOpenThread} room={room} />
-        ))}
+      {/* px-6 py-4 on outer — content capped at 680px and centered; padding shows naturally when wider */}
+      <div className="px-6 py-4">
+        <div className="mx-auto flex flex-col gap-5" style={{ maxWidth: 680 }}>
+          {room.messages.map((m) => (
+            <MessageBubble key={m.id} message={m} isLastMine={m.id === lastMineId} onOpenThread={onOpenThread} room={room} />
+          ))}
+        </div>
       </div>
     </ScrollArea>
   )
