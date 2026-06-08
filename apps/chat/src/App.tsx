@@ -508,7 +508,7 @@ function RoomMoreMenu({
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant="text" size="sm" iconOnly startIcon={MoreHorizontal} aria-label="More" title="" />
+            <Button variant="text" size="sm" iconOnly startIcon={MoreHorizontal} aria-label="More" title="" className="!h-6 !w-6 !min-w-0 !p-0" />
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent>More</TooltipContent>
@@ -612,8 +612,12 @@ function RoomRow({
         </span>
       )}
 
-      {/* Hover: more button — stays in flex flow (no absolute) so Radix can anchor the dropdown correctly */}
-      <div className="shrink-0 invisible group-hover:visible [&:has([data-state=open])]:visible" onClick={(e) => e.stopPropagation()}>
+      {/* Hover: 24×24 more button, box right edge 12px from divider (right-1 = 4px inside the row's 8px right padding).
+          invisible (not hidden) keeps a measurable box so Radix anchors the dropdown correctly; overlays date/time + badge. */}
+      <div
+        className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover:visible [&:has([data-state=open])]:visible"
+        onClick={(e) => e.stopPropagation()}
+      >
         <RoomMoreMenu
           room={room}
           isMuted={isMuted}
@@ -689,8 +693,8 @@ function ChatList({
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
-        {/* pl-2 only — row's own px-2 provides 8px right gap from the divider */}
-        <div className="pl-2 pb-3">
+        {/* px-2 container + row's px-2 → date/time & badge sit 16px from the right divider */}
+        <div className="px-2 pb-3">
           <Section label="Favorites" open={openFav} onToggle={() => setOpenFav((v) => !v)} />
           {openFav && favorites.map((r) => (
             <RoomRow
