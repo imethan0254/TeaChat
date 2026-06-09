@@ -68,7 +68,7 @@ ChatList
 └── ResizeHandle          拖曳改寬度
 ```
 
-- `RoomRow`：兩行預覽（名稱 + 最後訊息）。右側 time + 未讀 badge 用 `shrink-0` 防止 resize 時裁切。
+- `RoomRow`：兩行預覽（名稱 + 最後訊息）。右側 time + 未讀 badge 用 `shrink-0` 防止 resize 時裁切。ChatList `<aside>` 無 `border-r`，視覺分隔線由 ResizeHandle 本身的 1px line 提供（避免雙線 = 2px 外觀）。
 - `RoomMoreMenu`：more 選單 → Mute/Unmute · Favorite/Unfavorite · Open in new tab · Open in new window · Leave。
   - 選單出現在 more 按鈕**下方 8px**（`side="bottom" sideOffset={8}`）；保留 Radix 預設碰撞避讓，靠近視窗邊緣時自動翻上方以維持可見。
   - more 按鈕為 **24×24px**（`!h-6 !w-6 !p-0`），外層 `absolute right-1 top-1/2 -translate-y-1/2`，框右緣距分隔線 **12px**（icon 視覺右緣落在 16px，與 date/time 右緣重疊）。用 **`invisible` 而非 `hidden`**（保留可量測 box，讓 Radix 正確錨定 dropdown）；`group-hover:visible` + `[&:has([data-state=open])]:visible` → hover 才出現、選單開啟時保持顯示。
@@ -92,14 +92,17 @@ Conversation
 │       └── Search / Room info…
 ├── MessageArea
 │   └── MessageBubble × n
-│       ├── 我的: bg #EBEEFF、時間在上、status icon 在泡泡外
-│       ├── 對方: 頭像 + 名稱 + 時間 (12px neutral-7)
-│       ├── ReactionBar
-│       └── ReactionMoreMenu  (mine vs other 不同選單；`side="bottom" sideOffset={8}`，保留 Radix 碰撞避讓)
-├── InputBox                  (無頂部分隔線；接受 `fullWidth` prop。ON=全寬；OFF=max 880px 置中)
-└── ThreadPanel               寬 320~720，可拉寬
-    ├── 父訊息 + 回覆串
-    └── ThreadInputBox        含 "Also send to chatroom" checkbox
+│       ├── 我的: bg #EBEEFF、時間在上、status icon 在泡泡外；泡泡四角圓角 rounded-xl (12px)
+│       ├── 對方: 頭像 + 名稱 + 時間 (sm/400 12px/130% neutral-7)；名稱與時間間距 8px；名稱+時間列與泡泡間距 4px
+│       ├── 泡泡 padding p-3 (12px)；reactions emoji 按鈕一律 h-6/px-2/py-1/border neutral-5（含 Add reaction 按鈕，樣式一致）/emoji 16px/count neutral-8
+│       ├── ReactionBar (z-[8]；hover 顯示；hideReplyInThread 時不顯示 Reply in thread 按鈕)
+│       ├── ReactionMoreMenu  (mine vs other 不同選單；`side="bottom" sideOffset={8}`，保留 Radix 碰撞避讓)
+│       └── Thread replies link: shrink-0 L-connector 24×12（border-l/b 1px neutral-4 + rounded-bl-[8px] 圓角，橫線落在 24×24 視覺垂直中點 y=12）+ MessagesSquare 16 + "N replies" sm/500 + 最新回覆時間 sm/400 neutral-7
+├── InputBox                  (無頂部分隔線；接受 `fullWidth` prop。ON=全寬；OFF=max 880px 置中；左右 padding 一律 px-4=16px)
+└── ThreadPanel               寬 320~720，可拉寬（ResizeHandle line 1px neutral-4）
+    ├── 父訊息（MessageBubble isInThread，下方無 "N replies" 分隔線）+ 回覆訊息（MessageBubble isInThread，ReactionBar 無 Reply in thread）
+    ├── `Message.threadMessages?: Message[]` 存實際回覆內容；replies count/latestReplyTime 由此衍生
+    └── ThreadInputBox        含 "Also send to chatroom" checkbox（ThreadPanel 容器無 `border-l`，視覺分隔線由 ResizeHandle 1px line 提供）
 ```
 
 > **ConversationHeader spec 驗證表（2026-06-09 confirmed）**：avatar 32×32(`size={32}`) · header `py-2`=上下 8px · 標題 `fontSize:16 / fontWeight:500 / lineHeight:'130%'` · icon-only 按鈕全 `size="sm"`=28×28 · 按鈕群 `gap-2`=8px · TeamsCallButton `px-1`=左右 4px + icon `size={18}` · RoomInfoButton `px-1`=4px + icon `size={18}` + badge `h-5`=20px / `pl:4 pr:4 pt:2 pb:2` / `fontSize:12 / lineHeight:'130%'` / `font-medium` · Edit 按鈕 `size="sm"`=28×28。
@@ -135,7 +138,7 @@ type MsgStatus = 'sending' | 'sent' | 'read'
 
 type Person  = { name; color; status: Presence; role; email; avatar }
 type Reaction = { emoji; count }
-type Message = { id; author; text; time; status: MsgStatus; reactions[]; replies }
+type Message = { id; author; text; time; status: MsgStatus; reactions[]; replies; threadMessages[] }
 type Room    = { id; name; type; section: 'favorites' | 'chats'; unread; messages[] }
 ```
 
@@ -147,7 +150,8 @@ type Room    = { id; name; type; section: 'favorites' | 'chats'; unread; message
 
 | 常數 | 值 | 用途 |
 |---|---|---|
-| `CHAT_LIST_MIN` / `CHAT_LIST_MAX` | 260 / 480 | ChatList 寬度範圍 |
+| `CHAT_LIST_MIN` / `CHAT_LIST_MAX` | 120 / 480 | ChatList 寬度範圍 |
 | `THREAD_MIN` / `THREAD_MAX` | 320 / 720 | Thread panel 寬度範圍 |
 | MessageArea max-width (fullWidth=false) | 960px | 訊息區置中上限 |
+| MessageArea padding | `px-4 py-4` (16px) | fullWidth ON/OFF 均同 |
 | 我的泡泡背景 | `#EBEEFF` | — |
