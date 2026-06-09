@@ -93,12 +93,15 @@ Conversation
 ├── MessageArea
 │   └── MessageBubble × n
 │       ├── 我的: bg #EBEEFF、時間在上、status icon 在泡泡外
-│       ├── 對方: 頭像 + 名稱 + 時間 (12px neutral-7)
-│       ├── ReactionBar
-│       └── ReactionMoreMenu  (mine vs other 不同選單；`side="bottom" sideOffset={8}`，保留 Radix 碰撞避讓)
+│       ├── 對方: 頭像 + 名稱 + 時間 (sm/400 12px/130% neutral-7)；名稱與時間間距 8px；名稱+時間列與泡泡間距 4px
+│       ├── 泡泡 padding p-3 (12px)；reactions emoji 按鈕 h-6/px-2/py-1/gap-1/border neutral-5/emoji 16px/count neutral-8
+│       ├── ReactionBar (z-[8]；hover 顯示；hideReplyInThread 時不顯示 Reply in thread 按鈕)
+│       ├── ReactionMoreMenu  (mine vs other 不同選單；`side="bottom" sideOffset={8}`，保留 Radix 碰撞避讓)
+│       └── Thread replies link: shrink-0 L-connector 24×24 + MessagesSquare 16 + "N replies" sm/500 + 最新回覆時間 sm/400 neutral-7
 ├── InputBox                  (無頂部分隔線；接受 `fullWidth` prop。ON=全寬；OFF=max 880px 置中)
 └── ThreadPanel               寬 320~720，可拉寬
-    ├── 父訊息 + 回覆串
+    ├── 父訊息（MessageBubble isInThread）+ 分隔線 "N replies" + 回覆訊息（MessageBubble isInThread，ReactionBar 無 Reply in thread）
+    ├── `Message.threadMessages?: Message[]` 存實際回覆內容；replies count/latestReplyTime 由此衍生
     └── ThreadInputBox        含 "Also send to chatroom" checkbox
 ```
 
@@ -135,7 +138,7 @@ type MsgStatus = 'sending' | 'sent' | 'read'
 
 type Person  = { name; color; status: Presence; role; email; avatar }
 type Reaction = { emoji; count }
-type Message = { id; author; text; time; status: MsgStatus; reactions[]; replies }
+type Message = { id; author; text; time; status: MsgStatus; reactions[]; replies; threadMessages[] }
 type Room    = { id; name; type; section: 'favorites' | 'chats'; unread; messages[] }
 ```
 
@@ -147,7 +150,7 @@ type Room    = { id; name; type; section: 'favorites' | 'chats'; unread; message
 
 | 常數 | 值 | 用途 |
 |---|---|---|
-| `CHAT_LIST_MIN` / `CHAT_LIST_MAX` | 260 / 480 | ChatList 寬度範圍 |
+| `CHAT_LIST_MIN` / `CHAT_LIST_MAX` | 120 / 480 | ChatList 寬度範圍 |
 | `THREAD_MIN` / `THREAD_MAX` | 320 / 720 | Thread panel 寬度範圍 |
 | MessageArea max-width (fullWidth=false) | 960px | 訊息區置中上限 |
 | 我的泡泡背景 | `#EBEEFF` | — |

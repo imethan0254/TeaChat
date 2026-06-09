@@ -174,6 +174,7 @@ type Message = {
   reactions?: Reaction[]
   replies?: number
   msgStatus?: MsgStatus
+  threadMessages?: Message[]
 }
 
 type Room = {
@@ -208,7 +209,16 @@ const ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.shinichi,
     messages: [
-      { id: 'm1', author: 'shinichi', text: 'Morning! Is the oolong tasting flight ready?', time: '09:12', reactions: [{ emoji: '👍', count: 8 }], replies: 8 },
+      { id: 'm1', author: 'shinichi', text: 'Morning! Is the oolong tasting flight ready?', time: '09:12', reactions: [{ emoji: '👍', count: 8 }], threadMessages: [
+        { id: 'm1-t1', author: 'me', text: "I'll confirm with the sourcing team first.", time: '09:13' },
+        { id: 'm1-t2', author: 'shinichi', text: 'The Dong Ding batch or the High Mountain?', time: '09:13' },
+        { id: 'm1-t3', author: 'me', text: 'Both — 4 samples each.', time: '09:13' },
+        { id: 'm1-t4', author: 'guanyu', text: 'Should I bring the aroma wheel?', time: '09:14' },
+        { id: 'm1-t5', author: 'me', text: 'Yes please, and the scoring sheets too.', time: '09:14' },
+        { id: 'm1-t6', author: 'yating', text: 'I can bring extra cups.', time: '09:15' },
+        { id: 'm1-t7', author: 'shinichi', text: 'Perfect. See everyone at 10:30.', time: '09:15' },
+        { id: 'm1-t8', author: 'me', text: '👍 See you there.', time: '09:15' },
+      ] },
       { id: 'm2', author: 'me', text: 'All set — 10:30 in tasting room No.3.', time: '09:14', msgStatus: 'sent' },
       { id: 'm3', author: 'shinichi', text: 'Great, I will prepare the scoring sheet.', time: '09:15' },
     ],
@@ -221,7 +231,16 @@ const ROOMS: Room[] = [
     unread: false,
     memberKeys: ['shinichi', 'guanyu', 'yating', 'kenji'],
     messages: [
-      { id: 'g1', author: 'guanyu', text: 'Cupcake ipsum: the tasting report is updated, please take a look on Figma.', time: '08:40', reactions: [{ emoji: '👍', count: 8 }, { emoji: '🍵', count: 3 }], replies: 8 },
+      { id: 'g1', author: 'guanyu', text: 'Cupcake ipsum: the tasting report is updated, please take a look on Figma.', time: '08:40', reactions: [{ emoji: '👍', count: 8 }, { emoji: '🍵', count: 3 }], threadMessages: [
+        { id: 'g1-t1', author: 'yating', text: 'Left comments on the color section.', time: '08:41' },
+        { id: 'g1-t2', author: 'shinichi', text: 'The typography looks great.', time: '08:41' },
+        { id: 'g1-t3', author: 'me', text: 'Agreed, nice work.', time: '08:42' },
+        { id: 'g1-t4', author: 'kenji', text: 'Component specs are clear, easy to implement.', time: '08:42' },
+        { id: 'g1-t5', author: 'yating', text: 'Updated the spacing tokens too.', time: '08:43' },
+        { id: 'g1-t6', author: 'me', text: 'The grid system looks clean.', time: '08:43' },
+        { id: 'g1-t7', author: 'guanyu', text: 'Thanks everyone! Will sync with PM after.', time: '08:44' },
+        { id: 'g1-t8', author: 'me', text: 'Great, see you at standup.', time: '08:44' },
+      ] },
       { id: 'g2', author: 'me', text: 'Got it, reviewing now.', time: '08:42', msgStatus: 'read' },
     ],
   },
@@ -233,7 +252,10 @@ const ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.ai,
     messages: [
-      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', replies: 2 },
+      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', threadMessages: [
+        { id: 'a1-t1', author: 'ai', text: 'Three oolong, two green tea varieties.', time: '5/28' },
+        { id: 'a1-t2', author: 'me', text: 'I will set up the cupping station.', time: '5/28' },
+      ] },
       { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '5/28', msgStatus: 'read' },
     ],
   },
@@ -869,7 +891,7 @@ function ConversationHeader({
   )
 
   return (
-    <header className="flex items-center gap-2.5 py-2 px-4 border-b border-divider bg-surface shrink-0">
+    <header className="flex items-center gap-2 py-2 px-4 border-b border-divider bg-surface shrink-0">
       {!listOpen && (
         <>
           <Tooltip>
@@ -971,9 +993,9 @@ function ReactionMoreMenu({
   )
 }
 
-function ReactionBar({ onOpenThread, mine, room }: { onOpenThread: () => void; mine: boolean; room: Room }) {
+function ReactionBar({ onOpenThread, mine, room, hideReplyInThread }: { onOpenThread: () => void; mine: boolean; room: Room; hideReplyInThread?: boolean }) {
   return (
-    <div className="absolute -top-4 right-2 z-10 flex items-center gap-0.5 rounded-lg border border-divider bg-surface-raised p-0.5 shadow-md invisible group-hover/msg:visible [&:has([data-state=open])]:visible">
+    <div className="absolute -top-4 right-2 z-[8] flex items-center gap-0.5 rounded-lg border border-divider bg-surface-raised p-0.5 shadow-md invisible group-hover/msg:visible [&:has([data-state=open])]:visible">
       {COMMON_EMOJI.map((e) => (
         <Tooltip key={e}>
           <TooltipTrigger asChild>
@@ -984,7 +1006,7 @@ function ReactionBar({ onOpenThread, mine, room }: { onOpenThread: () => void; m
       ))}
       <IconBtnSm icon={SmilePlus} label="Add reaction" />
       <Separator orientation="vertical" className="mx-0.5 h-5" />
-      <IconBtnSm icon={MessagesSquare} label="Reply in thread" onClick={onOpenThread} />
+      {!hideReplyInThread && <IconBtnSm icon={MessagesSquare} label="Reply in thread" onClick={onOpenThread} />}
       <IconBtnSm icon={Reply} label="Reply with quote" />
       <ReactionMoreMenu mine={mine} room={room} />
     </div>
@@ -996,14 +1018,20 @@ function MessageBubble({
   isLastMine,
   onOpenThread,
   room,
+  isInThread,
 }: {
   message: Message
   isLastMine: boolean
   onOpenThread: (m: Message) => void
   room: Room
+  isInThread?: boolean
 }) {
   const mine = message.author === 'me'
   const author = mine ? null : PEOPLE[message.author] ?? null
+  const replyCount = message.threadMessages?.length ?? message.replies ?? 0
+  const latestReplyTime = message.threadMessages?.length
+    ? message.threadMessages[message.threadMessages.length - 1].time
+    : null
 
   return (
     <div className={`group/msg flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
@@ -1015,25 +1043,24 @@ function MessageBubble({
           </div>
         )}
 
-        <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex flex-col gap-1 min-w-0">
           {/* My message: time above bubble */}
           {mine && (
             <div className="flex justify-end pr-1">
-              <span className="text-caption text-fg-secondary">{message.time}</span>
+              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
             </div>
           )}
 
-          {/* Other: name + time (12px neutral-7) above bubble */}
+          {/* Other: name + time above bubble — sm/400 12px/130% */}
           {!mine && author && (
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span style={{ fontSize: 12, color: 'var(--color-neutral-7)', fontWeight: 500 }}>{author.name}</span>
-              <span style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>{message.time}</span>
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{author.name}</span>
+              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
             </div>
           )}
 
           {/* Bubble row: bubble + status icon to the right (mine only, 8px gap) */}
           <div className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-            {/* Status icon: right of bubble for mine, bottom-aligned, 8px gap */}
             {mine && isLastMine && message.msgStatus && (
               <span className="shrink-0 pb-1">
                 <MsgStatusIcon status={message.msgStatus} />
@@ -1042,9 +1069,9 @@ function MessageBubble({
 
             {/* Bubble */}
             <div className="relative min-w-0">
-              <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} />
+              <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} hideReplyInThread={isInThread} />
               <div
-                className={`rounded-2xl px-3.5 py-2.5 text-body ${
+                className={`rounded-2xl p-3 text-body ${
                   mine ? 'rounded-tr-sm text-foreground' : 'rounded-tl-sm bg-muted text-foreground'
                 }`}
                 style={mine ? { backgroundColor: '#EBEEFF' } : undefined}
@@ -1053,12 +1080,17 @@ function MessageBubble({
                 {message.reactions && message.reactions.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {message.reactions.map((r) => (
-                      <span key={r.emoji} className="flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 text-caption">
-                        <span>{r.emoji}</span>
-                        <span className="text-fg-secondary">{r.count}</span>
-                      </span>
+                      <button
+                        key={r.emoji}
+                        type="button"
+                        className="flex h-6 items-center gap-1 rounded-full border bg-surface px-2 py-1 hover:bg-neutral-hover"
+                        style={{ borderColor: 'var(--color-neutral-5)' }}
+                      >
+                        <span style={{ fontSize: 16 }}>{r.emoji}</span>
+                        <span style={{ color: 'var(--color-neutral-8)' }}>{r.count}</span>
+                      </button>
                     ))}
-                    <button type="button" aria-label="Add reaction" className="flex items-center rounded-full bg-surface px-1.5 py-1 text-fg-secondary hover:text-foreground">
+                    <button type="button" aria-label="Add reaction" className="flex h-6 items-center rounded-full bg-surface px-1.5 py-1 text-fg-secondary hover:text-foreground">
                       <SmilePlus size={14} />
                     </button>
                   </div>
@@ -1067,33 +1099,25 @@ function MessageBubble({
             </div>
           </div>
 
-          {/* Thread replies — L-line left edge aligns with bubble left edge */}
-          {!mine && message.replies != null && message.replies > 0 && (
-            <div className="mt-0.5 flex items-center gap-1.5">
-              {/* L-shaped connector: left edge = bubble left edge (x=0 in this column) */}
-              <div
-                className="shrink-0 border-l-2 border-b-2 border-neutral-300 rounded-bl"
-                style={{ width: 12, height: 10 }}
-              />
+          {/* Thread replies link — only in main area (not inside thread panel) */}
+          {!isInThread && replyCount > 0 && (
+            <div className={`mt-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''}`}>
+              {!mine && (
+                <div
+                  className="shrink-0 border-l-2 border-b-2 border-neutral-300 rounded-bl"
+                  style={{ width: 24, height: 24 }}
+                />
+              )}
               <button
                 type="button"
-                className="flex items-center gap-1.5 text-caption text-info-text hover:underline"
+                className="flex items-center gap-1 text-info-text hover:underline"
                 onClick={() => onOpenThread(message)}
               >
-                <MessagesSquare size={14} />
-                {message.replies} replies
-              </button>
-            </div>
-          )}
-          {mine && message.replies != null && message.replies > 0 && (
-            <div className="mt-0.5 flex justify-end">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-caption text-info-text hover:underline"
-                onClick={() => onOpenThread(message)}
-              >
-                <MessagesSquare size={14} />
-                {message.replies} replies
+                <MessagesSquare size={16} />
+                <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%' }}>{replyCount} replies</span>
+                {latestReplyTime && (
+                  <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)', marginLeft: 4 }}>{latestReplyTime}</span>
+                )}
               </button>
             </div>
           )}
@@ -1293,45 +1317,38 @@ function ThreadPanel({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-4 px-4 py-4">
-          {/* Parent message — same style as MessageBubble, no border/box */}
-          <div className={`group/msg flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-            <div className={`flex items-start gap-2 ${mine ? 'flex-row-reverse' : ''} max-w-[90%]`}>
-              {!mine && author && (
-                <div className="mt-0.5 shrink-0">
-                  {author === ME ? (
-                    <div className="relative inline-flex shrink-0">
-                      <Avatar src={ME.avatar} alt={ME.name} color={ME.color} size={32} />
-                    </div>
-                  ) : (
-                    <PersonAvatar person={author as Person} size={32} />
-                  )}
-                </div>
-              )}
-              <div className="flex flex-col gap-0.5 min-w-0">
-                {mine && (
-                  <div className="flex justify-end pr-1">
-                    <span className="text-caption text-fg-secondary">{message.time}</span>
-                  </div>
-                )}
-                {!mine && author && (
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span style={{ fontSize: 12, color: 'var(--color-neutral-7)', fontWeight: 500 }}>
-                      {author === ME ? 'Me' : (author as Person).name.split(' ')[0]}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>{message.time}</span>
-                  </div>
-                )}
-                <div
-                  className={`rounded-2xl px-3.5 py-2.5 text-body ${
-                    mine ? 'rounded-tr-sm text-foreground' : 'rounded-tl-sm bg-muted text-foreground'
-                  }`}
-                  style={mine ? { backgroundColor: '#EBEEFF' } : undefined}
-                >
-                  <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                </div>
+          {/* Parent message */}
+          <MessageBubble
+            message={message}
+            isLastMine={message.author === 'me'}
+            onOpenThread={() => {}}
+            room={room}
+            isInThread
+          />
+          {/* Thread replies */}
+          {message.threadMessages && message.threadMessages.length > 0 && (
+            <>
+              <div className="flex items-center gap-2">
+                <Separator className="flex-1" />
+                <span className="shrink-0 text-caption text-fg-secondary">{message.threadMessages.length} {message.threadMessages.length === 1 ? 'reply' : 'replies'}</span>
+                <Separator className="flex-1" />
               </div>
-            </div>
-          </div>
+              {(() => {
+                const threadMsgs = message.threadMessages!
+                const lastMineId = [...threadMsgs].reverse().find((m) => m.author === 'me')?.id ?? null
+                return threadMsgs.map((tm) => (
+                  <MessageBubble
+                    key={tm.id}
+                    message={tm}
+                    isLastMine={tm.id === lastMineId}
+                    onOpenThread={() => {}}
+                    room={room}
+                    isInThread
+                  />
+                ))
+              })()}
+            </>
+          )}
         </div>
       </ScrollArea>
 
