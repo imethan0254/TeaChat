@@ -710,7 +710,7 @@ function ChatList({
   }
 
   return (
-    <aside className="relative flex shrink-0 flex-col border-r border-divider bg-surface" style={{ width }}>
+    <aside className="relative flex shrink-0 flex-col bg-surface" style={{ width }}>
       <header className="flex items-center border-b border-divider px-3 py-2">
         <h2 className="flex-1 truncate font-semibold" style={{ fontSize: 16 }}>Chats</h2>
         <div className="flex items-center gap-2">
@@ -1108,10 +1108,10 @@ function MessageBubble({
           {!isInThread && replyCount > 0 && (
             <div className={`mt-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''}`}>
               {!mine && (
-                <div
-                  className="shrink-0 border-l border-b rounded-bl-[10px]"
-                  style={{ width: 24, height: 24, borderColor: 'var(--color-neutral-4)' }}
-                />
+                <div className="relative shrink-0" style={{ width: 24, height: 24 }}>
+                  <div className="absolute w-px bg-[var(--color-neutral-4)]" style={{ left: 10, top: 0, height: 12 }} />
+                  <div className="absolute h-px bg-[var(--color-neutral-4)]" style={{ left: 10, top: 12, right: 0 }} />
+                </div>
               )}
               <button
                 type="button"
@@ -1138,7 +1138,7 @@ function MessageArea({ room, onOpenThread, fullWidth }: { room: Room; onOpenThre
     <ScrollArea className="min-h-0 flex-1">
       {/* fullWidth=true → no max-width constraint, 16px padding each side
           fullWidth=false → capped at 960px, centered, px-6 outer padding */}
-      <div className={fullWidth ? 'px-4 py-4' : 'px-6 py-4'}>
+      <div className="px-4 py-4">
         <div
           className="mx-auto flex flex-col gap-5"
           style={fullWidth ? undefined : { maxWidth: 960 }}
@@ -1294,7 +1294,7 @@ function ThreadPanel({
 
   return (
     <div
-      className="relative flex shrink-0 flex-col border-l border-divider bg-canvas"
+      className="relative flex shrink-0 flex-col bg-canvas"
       style={expanded ? { flex: 1 } : { width: width ?? 480 }}
     >
       {!expanded && (
