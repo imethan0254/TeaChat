@@ -1256,7 +1256,8 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
     if (!el) return
     el.style.height = 'auto'
     const scrollH = el.scrollHeight
-    el.style.height = `${Math.min(scrollH, 160)}px`
+    // whole input box max height 280px → cap textarea growth (leaves room for padding + buttons)
+    el.style.height = `${Math.min(scrollH, 232)}px`
     setMultiline(value.includes('\n') || scrollH > 44)
   }, [value])
 
@@ -1267,6 +1268,8 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
     setMultiline(false)
   }
 
+  const hasValue = value.trim().length > 0
+
   const actionButtons = (
     <div className="flex shrink-0 items-center gap-0.5">
       <IconBtnSm icon={Type} label="Rich editor" />
@@ -1275,7 +1278,8 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
       <Separator orientation="vertical" className="mx-1 h-5" />
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="primary" size="sm" iconOnly startIcon={Send} aria-label="Send" title="" onClick={send} disabled={!value.trim()} />
+          {/* empty → text (no bg, dark stroke) initial state; has value → primary filled */}
+          <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send" title="" onClick={send} />
         </TooltipTrigger>
         <TooltipContent>Send</TooltipContent>
       </Tooltip>
@@ -1283,11 +1287,16 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
   )
 
   return (
-    <div className="shrink-0 bg-surface" style={{ paddingTop: 8, paddingBottom: 16, paddingLeft: fullWidth ? 56 : 16, paddingRight: fullWidth ? 56 : 16 }}>
-      <div className="mx-auto" style={fullWidth ? undefined : { maxWidth: 880 }}>
+    <div className="shrink-0 bg-surface px-4" style={{ paddingTop: 8, paddingBottom: 16 }}>
+      {/* left/right edges align with MessageArea chat-bubble region: ON full-width 16px sides, OFF max 960 centered */}
+      <div className="mx-auto" style={fullWidth ? undefined : { maxWidth: 960 }}>
         <div
-          className="rounded-xl border border-border bg-canvas focus-within:border-border-hover"
-          style={{ paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 8 }}
+          className="rounded-xl border bg-canvas"
+          style={{
+            paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 8,
+            maxHeight: 280, overflow: 'hidden',
+            borderColor: hasValue ? 'var(--color-primary-hover)' : 'var(--color-border)',
+          }}
         >
           {multiline ? (
             <>
@@ -1300,7 +1309,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                className="!resize-none !border-0 !p-0 w-full max-h-40"
+                className="!resize-none !border-0 !p-0 w-full max-h-[232px] overflow-y-auto"
               />
               <div className="mt-1.5 flex items-center justify-end">
                 {actionButtons}
@@ -1317,7 +1326,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                className="!resize-none !border-0 !p-0 min-w-0 flex-1 max-h-40"
+                className="!resize-none !border-0 !p-0 min-w-0 flex-1 max-h-[232px] overflow-y-auto"
               />
               {actionButtons}
             </div>
