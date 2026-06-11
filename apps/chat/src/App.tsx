@@ -1283,7 +1283,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
   )
 
   return (
-    <div className="shrink-0 bg-surface px-4" style={{ paddingTop: 8, paddingBottom: 16 }}>
+    <div className="shrink-0 bg-surface" style={{ paddingTop: 8, paddingBottom: 16, paddingLeft: fullWidth ? 56 : 16, paddingRight: fullWidth ? 56 : 16 }}>
       <div className="mx-auto" style={fullWidth ? undefined : { maxWidth: 880 }}>
         <div
           className="rounded-xl border border-border bg-canvas focus-within:border-border-hover"
