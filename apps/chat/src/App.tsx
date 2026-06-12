@@ -136,15 +136,17 @@ function IconBtnSm({
   icon,
   label,
   onClick,
+  className,
 }: {
   icon: React.ComponentProps<typeof Button>['startIcon']
   label: string
   onClick?: () => void
+  className?: string
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="text" size="sm" iconOnly startIcon={icon} aria-label={label} title="" onClick={onClick} />
+        <Button variant="text" size="sm" iconOnly startIcon={icon} aria-label={label} title="" onClick={onClick} className={className} />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -176,6 +178,7 @@ type Message = {
   msgStatus?: MsgStatus
   threadMessages?: Message[]
   images?: string[]
+  table?: string[][]
 }
 
 type Room = {
@@ -309,6 +312,46 @@ const INITIAL_ROOMS: Room[] = [
     messages: [
       { id: 'p1', author: 'kenji', text: 'Deploy is green. Shipping to staging now.', time: '11:02', reactions: [{ emoji: '🚀', count: 4 }] },
       { id: 'p2', author: 'me', text: 'Nice work team.', time: '11:05', msgStatus: 'read' },
+    ],
+  },
+  {
+    id: 'semi-sales',
+    type: 'general',
+    title: 'Semiconductor Sales 半導體業務團隊',
+    section: 'chats',
+    unread: true,
+    memberKeys: ['guanyu', 'kenji', 'yui', 'shinichi'],
+    messages: [
+      {
+        id: 'sc1', author: 'guanyu', time: '14:02',
+        text: 'Q3 wafer demand forecast by key account — please review before the QBR with the foundry.',
+        table: [
+          ['Customer', 'Node', 'Q3 Wafers', 'Q4 Wafers', 'Status'],
+          ['Apex Systems', 'N5', '12,000', '14,500', 'Confirmed'],
+          ['Nimbus AI', 'N3', '8,200', '11,000', 'Pending PO'],
+          ['Orion Devices', 'N7', '5,600', '5,400', 'Confirmed'],
+          ['Vega Mobile', 'N5', '9,800', '10,200', 'Forecast'],
+          ['Helix Auto', 'N12', '3,400', '3,900', 'Confirmed'],
+        ],
+      },
+      {
+        id: 'sc2', author: 'kenji', time: '14:08',
+        text: 'N3 capacity is tight for Q4 — Nimbus may need an allocation review before we commit the PO.',
+      },
+      {
+        id: 'sc3', author: 'me', time: '14:10', msgStatus: 'read',
+        text: 'Here is the current N3 line utilization snapshot:',
+        table: [
+          ['Line', 'Utilization'],
+          ['Fab 18 P1', '94%'],
+          ['Fab 18 P2', '88%'],
+        ],
+      },
+      {
+        id: 'sc4', author: 'yui', time: '14:15',
+        text: 'Yield on N3 P2 climbed to 71% last week, so we should free up a bit of capacity for Nimbus.',
+        reactions: [{ emoji: '🎉', count: 3 }],
+      },
     ],
   },
   {
@@ -1083,11 +1126,50 @@ function MessageBubble({
                 src={src}
                 alt=""
                 className="rounded-lg object-cover"
-                style={{ maxWidth: '100%', maxHeight: 280 }}
+                style={{ width: 200, maxWidth: '100%', aspectRatio: '3 / 2' }}
               />
             ))}
           </div>
         )}
+        {message.table && message.table.length > 0 && (() => {
+          const cols = message.table[0].length
+          const single = cols === 1
+          return (
+            <div
+              className="scroll-hover mt-2 overflow-auto rounded-lg border"
+              style={{ maxHeight: 320, borderColor: 'var(--color-neutral-4)' }}
+            >
+              <table className="border-collapse" style={{ width: single ? '100%' : 'max-content' }}>
+                <tbody>
+                  {message.table.map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => (
+                        <td
+                          key={ci}
+                          className="border align-top"
+                          style={{
+                            borderColor: 'var(--color-neutral-4)',
+                            padding: '4px 8px',
+                            fontSize: 12,
+                            fontWeight: ri === 0 ? 600 : 400,
+                            lineHeight: '130%',
+                            minWidth: 24,
+                            height: 24,
+                            maxWidth: single ? undefined : 120,
+                            wordBreak: 'break-word',
+                            color: 'var(--color-foreground)',
+                          }}
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        })()}
         {message.reactions && message.reactions.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {message.reactions.map((r) => (
@@ -1270,16 +1352,17 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
 
   const hasValue = value.trim().length > 0
 
+  const btn24 = '!h-6 !w-6 !min-w-0 !p-0'
   const actionButtons = (
     <div className="flex shrink-0 items-center gap-0.5">
-      <IconBtnSm icon={Type} label="Rich editor" />
-      <IconBtnSm icon={Smile} label="Emoji" />
-      <IconBtnSm icon={Plus} label="Attach files" />
+      <IconBtnSm icon={Type} label="Rich editor" className={btn24} />
+      <IconBtnSm icon={Smile} label="Emoji" className={btn24} />
+      <IconBtnSm icon={Plus} label="Attach files" className={btn24} />
       <Separator orientation="vertical" className="mx-1 h-5" />
       <Tooltip>
         <TooltipTrigger asChild>
           {/* empty → text (no bg, dark stroke) initial state; has value → primary filled */}
-          <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send" title="" onClick={send} />
+          <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send" title="" onClick={send} className={btn24} />
         </TooltipTrigger>
         <TooltipContent>Send</TooltipContent>
       </Tooltip>
@@ -1291,7 +1374,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
       {/* ON: full-width, 56px sides; OFF: max 880px centered, 56px sides when narrower */}
       <div className="mx-auto w-full" style={fullWidth ? undefined : { maxWidth: 880 }}>
         <div
-          className="rounded-xl border bg-canvas"
+          className="rounded-lg border bg-canvas"
           style={{
             paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 8,
             maxHeight: 280, overflow: 'hidden',
@@ -1353,9 +1436,10 @@ function ThreadInputBox() {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [value])
 
+  const hasValue = value.trim().length > 0
   return (
     <div className="bg-surface px-3 py-2 shrink-0">
-      <div className="rounded-xl border border-border bg-canvas px-3 py-2 focus-within:border-border-hover">
+      <div className="rounded-lg border border-border bg-canvas px-3 py-2 focus-within:border-border-hover">
         <Textarea
           ref={ref}
           rows={1}
@@ -1378,7 +1462,7 @@ function ThreadInputBox() {
           </label>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="primary" size="sm" iconOnly startIcon={Send} aria-label="Send reply" title="" disabled={!value.trim()} />
+              <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send reply" title="" className="!h-6 !w-6 !min-w-0 !p-0" />
             </TooltipTrigger>
             <TooltipContent>Send</TooltipContent>
           </Tooltip>
