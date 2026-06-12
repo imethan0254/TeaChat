@@ -1138,8 +1138,11 @@ function MessageBubble({
     : null
 
   // Bubble (shared) — text + images + reactions
+  // w-fit + max-w-full: short messages hug content; wide tables cap at the
+  // available column width (set by the flex-1 parent) so the table scrolls
+  // horizontally instead of overflowing past the 96px margin.
   const bubble = (
-    <div className="relative min-w-0">
+    <div className={`relative min-w-0 w-fit max-w-full ${mine ? 'self-end' : 'self-start'}`}>
       <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} hideReplyInThread={isInThread} />
       <div
         className={`rounded-xl p-3 text-body ${mine ? 'text-foreground' : 'bg-muted text-foreground'}`}
