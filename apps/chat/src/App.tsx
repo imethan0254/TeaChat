@@ -1138,14 +1138,15 @@ function MessageBubble({
     : null
 
   // Bubble (shared) — text + images + reactions
-  // w-fit + max-w-full: short messages hug content; wide tables cap at the
-  // available column width (set by the flex-1 parent) so the table scrolls
-  // horizontally instead of overflowing past the 96px margin.
+  // w-fit + max-w-full on the rounded-xl (not the outer wrapper) so the bubble
+  // hugs short content and caps wide tables at the flex-1 column width.
+  // The outer div stays unsized (just `relative` for ReactionBar) so that
+  // items-end / items-start on the column controls alignment correctly.
   const bubble = (
-    <div className={`relative min-w-0 w-fit max-w-full ${mine ? 'self-end' : 'self-start'}`}>
+    <div className="relative">
       <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} hideReplyInThread={isInThread} />
       <div
-        className={`rounded-xl p-3 text-body ${mine ? 'text-foreground' : 'bg-muted text-foreground'}`}
+        className={`rounded-xl p-3 text-body w-fit max-w-full ${mine ? 'text-foreground' : 'bg-muted text-foreground'}`}
         style={mine ? { backgroundColor: '#EBEEFF' } : undefined}
       >
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
@@ -1166,12 +1167,11 @@ function MessageBubble({
           const cols = message.table[0].length
           const single = cols === 1
           return (
-            <div style={{ display: 'inline-block', maxWidth: '100%', marginTop: 8 }}>
-              <div
-                className="scroll-hover overflow-auto rounded-lg border"
-                style={{ maxHeight: 320, borderColor: 'var(--color-neutral-4)', backgroundColor: 'white' }}
-              >
-                <table className="border-collapse" style={{ width: single ? '100%' : 'max-content' }}>
+            <div
+              className="scroll-hover mt-2 overflow-auto rounded-lg border"
+              style={{ maxHeight: 320, borderColor: 'var(--color-neutral-4)', backgroundColor: 'white' }}
+            >
+              <table className="border-collapse" style={{ width: single ? '100%' : 'max-content' }}>
                   <tbody>
                     {message.table.map((row, ri) => (
                       <tr key={ri}>
@@ -1200,7 +1200,6 @@ function MessageBubble({
                     ))}
                   </tbody>
                 </table>
-              </div>
             </div>
           )
         })()}
