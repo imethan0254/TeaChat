@@ -103,7 +103,7 @@ function NavBtn({
           aria-labelledby={labelId}
           onClick={onClick}
           overlayBadge={overlayBadge}
-          className={active ? '!bg-neutral-selected' : ''}
+          className={`!h-8 !w-8 !min-w-0 !p-0 ${active ? '!bg-neutral-selected' : ''}`}
         />
       </TooltipTrigger>
       {/* avoidCollisions=false forces right side always — prevents Radix from flipping to top */}
@@ -137,16 +137,18 @@ function IconBtnSm({
   label,
   onClick,
   className,
+  style,
 }: {
   icon: React.ComponentProps<typeof Button>['startIcon']
   label: string
   onClick?: () => void
   className?: string
+  style?: React.CSSProperties
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="text" size="sm" iconOnly startIcon={icon} aria-label={label} title="" onClick={onClick} className={className} />
+        <Button variant="text" size="sm" iconOnly startIcon={icon} aria-label={label} title="" onClick={onClick} className={className} style={style} />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -203,6 +205,104 @@ const PEOPLE: Record<string, Person> = {
 }
 
 const ME: Person = { name: 'Me 我', color: 'green', status: 'online', role: 'You', email: 'me@teachat.app', avatar: 'https://i.pravatar.cc/96?img=8' }
+
+// 20 unique 1-on-1 DM partners. Registered into PEOPLE below so message author
+// lookups (PEOPLE[author]) resolve name + avatar in the conversation view.
+const GENERATED_DM_PEOPLE: { key: string; person: Person }[] = [
+  { key: 'g-rei', person: { name: 'Aoki Rei 青木玲', color: 'blue', status: 'online', role: 'Account Exec', email: 'rei@teachat.app', avatar: 'https://i.pravatar.cc/96?img=25' } },
+  { key: 'g-marco', person: { name: 'Marco Bianchi', color: 'green', status: 'away', role: 'Logistics Lead', email: 'marco@teachat.app', avatar: 'https://i.pravatar.cc/96?img=15' } },
+  { key: 'g-mei', person: { name: 'Zhao Mei 趙美', color: 'magenta', status: 'busy', role: 'Buyer', email: 'mei@teachat.app', avatar: 'https://i.pravatar.cc/96?img=24' } },
+  { key: 'g-tom', person: { name: 'Tom Becker', color: 'indigo', status: 'online', role: 'Sales Eng', email: 'tom@teachat.app', avatar: 'https://i.pravatar.cc/96?img=51' } },
+  { key: 'g-hana', person: { name: 'Sato Hana 佐藤花', color: 'purple', status: 'offline', role: 'Coordinator', email: 'hana@teachat.app', avatar: 'https://i.pravatar.cc/96?img=44' } },
+  { key: 'g-leo', person: { name: 'Leo Fernandez', color: 'turquoise', status: 'online', role: 'Analyst', email: 'leo@teachat.app', avatar: 'https://i.pravatar.cc/96?img=52' } },
+  { key: 'g-jing', person: { name: 'Wu Jing 吳靜', color: 'red', status: 'away', role: 'Ops', email: 'jing@teachat.app', avatar: 'https://i.pravatar.cc/96?img=45' } },
+  { key: 'g-erik', person: { name: 'Erik Lund', color: 'blue', status: 'online', role: 'Vendor Mgr', email: 'erik@teachat.app', avatar: 'https://i.pravatar.cc/96?img=53' } },
+  { key: 'g-yuki', person: { name: 'Kimura Yuki 木村雪', color: 'green', status: 'busy', role: 'Designer', email: 'yuki@teachat.app', avatar: 'https://i.pravatar.cc/96?img=26' } },
+  { key: 'g-priya', person: { name: 'Priya Nair', color: 'purple', status: 'online', role: 'PM', email: 'priya@teachat.app', avatar: 'https://i.pravatar.cc/96?img=27' } },
+  { key: 'g-chen', person: { name: 'Chen Wei 陳偉', color: 'indigo', status: 'away', role: 'Engineer', email: 'chenwei@teachat.app', avatar: 'https://i.pravatar.cc/96?img=54' } },
+  { key: 'g-sara', person: { name: 'Sara Olsen', color: 'magenta', status: 'online', role: 'Marketing', email: 'sara@teachat.app', avatar: 'https://i.pravatar.cc/96?img=28' } },
+  { key: 'g-ken', person: { name: 'Yamada Ken 山田健', color: 'turquoise', status: 'offline', role: 'Support', email: 'yamada@teachat.app', avatar: 'https://i.pravatar.cc/96?img=55' } },
+  { key: 'g-nina', person: { name: 'Nina Costa', color: 'red', status: 'busy', role: 'Finance', email: 'nina@teachat.app', avatar: 'https://i.pravatar.cc/96?img=29' } },
+  { key: 'g-feng', person: { name: 'Li Feng 李峰', color: 'blue', status: 'online', role: 'Sourcing', email: 'lifeng@teachat.app', avatar: 'https://i.pravatar.cc/96?img=56' } },
+  { key: 'g-omar', person: { name: 'Omar Haddad', color: 'green', status: 'away', role: 'Retail', email: 'omar@teachat.app', avatar: 'https://i.pravatar.cc/96?img=57' } },
+  { key: 'g-aiko', person: { name: 'Mori Aiko 森愛子', color: 'purple', status: 'online', role: 'QA', email: 'aiko@teachat.app', avatar: 'https://i.pravatar.cc/96?img=30' } },
+  { key: 'g-paul', person: { name: 'Paul Meyer', color: 'indigo', status: 'busy', role: 'Data', email: 'paul@teachat.app', avatar: 'https://i.pravatar.cc/96?img=58' } },
+  { key: 'g-xia', person: { name: 'Deng Xia 鄧霞', color: 'magenta', status: 'online', role: 'Brand', email: 'xia@teachat.app', avatar: 'https://i.pravatar.cc/96?img=31' } },
+  { key: 'g-ivan', person: { name: 'Ivan Petrov', color: 'turquoise', status: 'offline', role: 'Warehouse', email: 'ivan@teachat.app', avatar: 'https://i.pravatar.cc/96?img=59' } },
+]
+GENERATED_DM_PEOPLE.forEach(({ key, person }) => { PEOPLE[key] = person })
+
+// 20 unique group chat topics (no overlap with INITIAL_ROOMS' existing names).
+const GENERATED_GROUP_TOPICS = [
+  'Marketing Sync', 'Design Review', 'Sourcing Updates', 'Logistics 物流', 'Customer Feedback',
+  'Roadmap Planning', 'QA Handoff', 'Packaging Vendors', 'Retail Partners', 'Finance Q&A',
+  'Brewing Lab 茶研室', 'Supply Chain', 'Event Planning', 'Tasting Notes 品評', 'Inventory Check',
+  'Cold Brew Project', 'Seasonal Blends', 'Export Compliance', 'Storefront Refresh', 'Wholesale Orders',
+]
+const GENERATED_GROUP_MEMBERS = ['shinichi', 'ai', 'ran', 'guanyu', 'yating', 'kenji', 'yui']
+const GENERATED_MSG_LINES = [
+  "Quick update on this — let's sync this week.",
+  'Sounds good, I will take a look today.',
+  'Can we push the deadline by a day?',
+  'Yes, that works on my end.',
+  'Just sent over the latest file, please check.',
+  'Thanks! Reviewing now.',
+  'One thing to flag — the numbers shifted slightly.',
+  'Got it, will adjust the plan accordingly.',
+  'Should we loop in the rest of the team?',
+  "Let's keep it small for now.",
+  'I added some notes in the doc.',
+  'Looks great, no further comments from me.',
+  'Quick question — is this ready for review?',
+  'Almost there, give me an hour.',
+  'No rush, take your time.',
+  'Following up on this thread.',
+  "Apologies for the delay, here's the update.",
+  'Perfect, that resolves it.',
+  'Let me know if anything else is needed.',
+  'Closing this out — thanks everyone!',
+]
+// 20 alternating back-and-forth messages: even slots = other party, odd = me.
+function makeGeneratedMessages(roomId: string, speakers: string[]) {
+  return Array.from({ length: 20 }, (_, j) => ({
+    id: `${roomId}-m${j + 1}`,
+    author: j % 2 === 1 ? 'me' : speakers[Math.floor(j / 2) % speakers.length],
+    text: GENERATED_MSG_LINES[j % GENERATED_MSG_LINES.length],
+    time: `${9 + (j % 8)}:${String((j * 3) % 60).padStart(2, '0')}`,
+  }))
+}
+
+// Natural, irregular interleave of the two queues (run lengths sum to 20 each):
+// dm5, grp3, dm3, grp4, dm6, grp2, dm2, grp5, dm4, grp6
+const GENERATED_RUNS: [('dm' | 'group'), number][] = [
+  ['dm', 5], ['group', 3], ['dm', 3], ['group', 4], ['dm', 6],
+  ['group', 2], ['dm', 2], ['group', 5], ['dm', 4], ['group', 6],
+]
+const GENERATED_CHAT_ROOMS: Room[] = (() => {
+  const rooms: Room[] = []
+  let dmIdx = 0
+  let groupIdx = 0
+  let n = 0
+  for (const [kind, len] of GENERATED_RUNS) {
+    for (let k = 0; k < len; k++) {
+      const id = `gen-${n}`
+      const unread = n % 3 === 0
+      if (kind === 'dm') {
+        const { key, person } = GENERATED_DM_PEOPLE[dmIdx++]
+        rooms.push({ id, type: 'dm', title: person.name, section: 'chats', unread, person, messages: makeGeneratedMessages(id, [key]) })
+      } else {
+        const members = [
+          GENERATED_GROUP_MEMBERS[groupIdx % GENERATED_GROUP_MEMBERS.length],
+          GENERATED_GROUP_MEMBERS[(groupIdx + 1) % GENERATED_GROUP_MEMBERS.length],
+          GENERATED_GROUP_MEMBERS[(groupIdx + 2) % GENERATED_GROUP_MEMBERS.length],
+        ]
+        rooms.push({ id, type: 'general', title: GENERATED_GROUP_TOPICS[groupIdx++], section: 'chats', unread, memberKeys: members, messages: makeGeneratedMessages(id, members) })
+      }
+      n++
+    }
+  }
+  return rooms
+})()
 
 const INITIAL_ROOMS: Room[] = [
   {
@@ -391,23 +491,25 @@ const INITIAL_ROOMS: Room[] = [
     memberKeys: ['kenji', 'yui'],
     messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '5/26' }],
   },
+  ...GENERATED_CHAT_ROOMS,
 ]
 
 const COMMON_EMOJI = ['👍', '❤️', '😂', '🎉']
 
 // ── Status dot ────────────────────────────────────────────────────────────────
-function StatusDot({ status }: { status: Presence }) {
+function StatusDot({ status, size = 8 }: { status: Presence; size?: number }) {
   const base = 'flex items-center justify-center rounded-full ring-1 ring-surface'
-  if (status === 'online') return <span className={`${base} bg-green-500`} style={{ width: 10, height: 10 }} />
-  if (status === 'busy') return <span className={`${base} bg-red-500`} style={{ width: 10, height: 10 }} />
+  const dim = { width: size, height: size }
+  if (status === 'online') return <span className={`${base} bg-green-500`} style={dim} />
+  if (status === 'busy') return <span className={`${base} bg-red-500`} style={dim} />
   if (status === 'away') {
     return (
-      <span className={`${base} bg-yellow-400`} style={{ width: 12, height: 12 }}>
-        <Clock size={8} className="text-white" strokeWidth={2.5} />
+      <span className={`${base} bg-yellow-400`} style={dim}>
+        <Clock size={Math.round(size * 0.67)} className="text-white" strokeWidth={2.5} />
       </span>
     )
   }
-  return <span className={`${base} border-2 border-neutral-400 bg-transparent`} style={{ width: 10, height: 10 }} />
+  return <span className={`${base} border-2 border-neutral-400 bg-transparent`} style={dim} />
 }
 
 // ── Avatar helpers ────────────────────────────────────────────────────────────
@@ -427,12 +529,12 @@ function makeProfileCard(p: Person) {
   )
 }
 
-function PersonAvatar({ person, size = 32 }: { person: Person; size?: number }) {
+function PersonAvatar({ person, size = 32, dotSize = 8 }: { person: Person; size?: number; dotSize?: number }) {
   return (
     <div className="relative inline-flex shrink-0">
       <Avatar src={person.avatar} alt={person.name} color={person.color} size={size} hoverCard={makeProfileCard(person)} />
       <span className="absolute -bottom-0.5 -right-0.5 z-10">
-        <StatusDot status={person.status} />
+        <StatusDot status={person.status} size={dotSize} />
       </span>
     </div>
   )
@@ -537,7 +639,7 @@ function NavRail({ unreadCount, onOpenSettings }: { unreadCount: number; onOpenS
   const moreLabelId = useId()
 
   return (
-    <nav className="flex w-12 shrink-0 flex-col items-center border-r border-divider bg-surface py-2">
+    <nav className="flex w-12 shrink-0 flex-col items-center border-r border-divider bg-surface px-2 py-2">
       <div className="flex h-10 items-center justify-center">
         <Logo />
       </div>
@@ -549,7 +651,7 @@ function NavRail({ unreadCount, onOpenSettings }: { unreadCount: number; onOpenS
           label="Chat"
           active={tab === 'chat'}
           onClick={() => setTab('chat')}
-          overlayBadge={unreadCount > 0 ? <Badge variant="critical" count={unreadCount} max={99} /> : undefined}
+          overlayBadge={unreadCount > 0 ? <Badge variant="critical" count={unreadCount} max={99} className="!bg-[#EC540F]" /> : undefined}
         />
       </div>
       <div className="mt-auto flex flex-col items-center gap-1 py-1">
@@ -558,7 +660,7 @@ function NavRail({ unreadCount, onOpenSettings }: { unreadCount: number; onOpenS
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="text" size="md" iconOnly startIcon={MoreHorizontal} aria-labelledby={moreLabelId} />
+                <Button variant="text" size="md" iconOnly startIcon={MoreHorizontal} aria-labelledby={moreLabelId} className="!h-8 !w-8 !min-w-0 !p-0" />
               </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent side="right" avoidCollisions={false}>More</TooltipContent>
@@ -605,13 +707,20 @@ function AddPopover() {
 
 function Section({ label, open, onToggle, trailing }: { label: string; open: boolean; onToggle: () => void; trailing?: React.ReactNode }) {
   return (
-    <div className="mt-2 flex items-center gap-1 px-1">
+    <div className="mt-2 flex items-center gap-1 p-1">
+      <IconBtnSm
+        icon={open ? ChevronDown : ChevronRight}
+        label={open ? 'Collapse' : 'Expand'}
+        onClick={onToggle}
+        className="!h-5 !w-5 !min-w-0 !p-0"
+        style={{ color: 'var(--color-neutral-7)' }}
+      />
       <button
         type="button"
         onClick={onToggle}
-        className="flex flex-1 items-center gap-1 rounded-md py-1 text-caption font-semibold text-fg-secondary hover:text-foreground"
+        className="flex-1 truncate text-left hover:text-foreground"
+        style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%', color: 'var(--color-neutral-7)' }}
       >
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         {label}
       </button>
       {trailing}
@@ -688,10 +797,18 @@ function RoomRow({
   const latestAuthor = latestMsg?.author === 'me' ? 'You' : (PEOPLE[latestMsg?.author]?.name.split(' ')[0] ?? '')
   const previewText = latestMsg ? `${latestAuthor}: ${latestMsg.text}` : ''
   const avatarSize = showPreview ? 32 : 20
+  const isUnread = room.unread && !isMuted
+  const titleStyle: React.CSSProperties = isUnread
+    ? { fontSize: 14, fontWeight: 700, lineHeight: '150%', color: 'var(--color-neutral-9)' }
+    : { fontSize: 14, fontWeight: 400, lineHeight: '150%', color: 'var(--color-neutral-8)' }
+  const timeStyle: React.CSSProperties = { fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }
+  const subtitleStyle: React.CSSProperties = isUnread
+    ? { fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-9)' }
+    : { fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-8)' }
 
   return (
     <div
-      className={`group relative flex cursor-pointer items-center gap-2 rounded-lg px-2 ${
+      className={`group relative flex cursor-pointer items-center gap-2 rounded-[4px] px-2 ${
         showPreview ? 'py-2' : 'py-1.5'
       } ${active ? 'bg-neutral-selected' : 'hover:bg-neutral-hover'}`}
       onClick={() => onSelect(room.id)}
@@ -700,7 +817,7 @@ function RoomRow({
       {isMuted ? (
         <MutedAvatar size={avatarSize} />
       ) : room.type === 'dm' && room.person ? (
-        <PersonAvatar person={room.person} size={avatarSize} />
+        <PersonAvatar person={room.person} size={avatarSize} dotSize={showPreview ? 8 : 6} />
       ) : (
         <GroupAvatar size={avatarSize} />
       )}
@@ -710,33 +827,27 @@ function RoomRow({
         <div className="min-w-0 flex-1">
           {/* Line 1: name (flex-1 truncate) + time (shrink-0, always visible) */}
           <div className="flex items-baseline gap-1">
-            <span
-              className="min-w-0 flex-1 truncate"
-              style={{ fontSize: 14, fontWeight: room.unread && !isMuted ? 600 : 400, color: 'var(--foreground)' }}
-            >
+            <span className="min-w-0 flex-1 truncate" style={titleStyle}>
               {room.title}
             </span>
-            <span className="shrink-0 text-fg-secondary group-hover:invisible" style={{ fontSize: 12 }}>
+            <span className="shrink-0 group-hover:invisible" style={timeStyle}>
               {latestMsg?.time ?? ''}
             </span>
           </div>
           {/* Line 2: preview (flex-1 truncate) + unread dot (shrink-0) */}
           <div className="flex items-center gap-1">
-            <p className="min-w-0 flex-1 truncate text-fg-secondary" style={{ fontSize: 12 }}>
+            <p className="min-w-0 flex-1 truncate" style={subtitleStyle}>
               {previewText}
             </p>
-            {room.unread && !isMuted && (
+            {isUnread && (
               <span className="shrink-0 group-hover:invisible">
-                <Badge dot variant="critical" />
+                <Badge dot variant="critical" className="!bg-[#EC540F]" />
               </span>
             )}
           </div>
         </div>
       ) : (
-        <span
-          className="min-w-0 flex-1 truncate"
-          style={{ fontSize: 14, fontWeight: room.unread && !isMuted ? 600 : 400, color: 'var(--foreground)' }}
-        >
+        <span className="min-w-0 flex-1 truncate" style={titleStyle}>
           {room.title}
         </span>
       )}
@@ -815,8 +926,8 @@ function ChatList({
 
   return (
     <aside className="relative flex shrink-0 flex-col bg-surface" style={{ width }}>
-      <header className="flex items-center border-b border-divider px-3 py-2">
-        <h2 className="flex-1 truncate font-semibold" style={{ fontSize: 16 }}>Chats</h2>
+      <header className="flex items-center border-b border-divider px-3" style={{ paddingTop: 10, paddingBottom: 10 }}>
+        <h2 className="flex-1 truncate" style={{ fontSize: 16, fontWeight: 500, lineHeight: '130%', color: 'var(--color-neutral-9)' }}>Chats</h2>
         <div className="flex items-center gap-2">
           <AddPopover />
           <ListBtn icon={Search} label="Search" />
@@ -840,7 +951,7 @@ function ChatList({
           ))}
           <Section
             label="Chats" open={openChats} onToggle={() => setOpenChats((v) => !v)}
-            trailing={<ListBtn icon={Plus} label="Add chat" />}
+            trailing={<IconBtnSm icon={Plus} label="Add chat" className="!h-6 !w-6 !min-w-0 !p-0" style={{ color: 'var(--color-neutral-7)' }} />}
           />
           {openChats && chats.map((r) => (
             <RoomRow
@@ -1204,7 +1315,7 @@ function MessageBubble({
           )
         })()}
         {message.reactions && message.reactions.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="mt-2 flex flex-wrap items-center gap-1">
             {message.reactions.map((r) => (
               <button
                 key={r.emoji}
@@ -1212,15 +1323,15 @@ function MessageBubble({
                 className="flex h-6 items-center gap-1 rounded-full border bg-surface px-2 py-1 hover:bg-neutral-hover"
                 style={{ borderColor: 'var(--color-neutral-5)' }}
               >
-                <span style={{ fontSize: 16 }}>{r.emoji}</span>
-                <span style={{ color: 'var(--color-neutral-8)' }}>{r.count}</span>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>{r.emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-8)' }}>{r.count}</span>
               </button>
             ))}
             <button
               type="button"
               aria-label="Add reaction"
-              className="flex h-6 items-center rounded-full border bg-surface px-2 py-1 text-fg-secondary hover:bg-neutral-hover hover:text-foreground"
-              style={{ borderColor: 'var(--color-neutral-5)' }}
+              className="flex h-6 items-center rounded-full border bg-surface px-2 py-1 hover:bg-neutral-hover"
+              style={{ borderColor: 'var(--color-neutral-5)', color: 'var(--color-neutral-7)' }}
             >
               <SmilePlus size={16} />
             </button>
@@ -1241,11 +1352,12 @@ function MessageBubble({
       )}
       <button
         type="button"
-        className="flex items-center gap-1 text-info-text hover:underline"
+        className="flex items-center gap-1 hover:underline"
+        style={{ color: 'var(--color-primary)' }}
         onClick={() => onOpenThread(message)}
       >
-        <MessagesSquare size={16} />
-        <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%' }}>{replyCount} replies</span>
+        <MessagesSquare size={16} style={{ color: 'var(--color-primary)' }} />
+        <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%', color: 'var(--color-primary)' }}>{replyCount} replies</span>
         {latestReplyTime && (
           <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)', marginLeft: 4 }}>{latestReplyTime}</span>
         )}
