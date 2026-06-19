@@ -1615,7 +1615,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
 const THREAD_MIN = 320
 const THREAD_MAX = 720
 
-function ThreadInputBox({ onSend }: { onSend: (text: string, alsoSend: boolean) => void }) {
+function ThreadInputBox({ onSend, onReply }: { onSend: (text: string, alsoSend: boolean) => void; onReply?: () => void }) {
   const [value, setValue] = useState('')
   const [alsoSend, setAlsoSend] = useState(true)
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -1632,6 +1632,7 @@ function ThreadInputBox({ onSend }: { onSend: (text: string, alsoSend: boolean) 
   function send() {
     if (!value.trim()) return
     onSend(value.trim(), alsoSend)
+    onReply?.()
     setValue('')
   }
 
@@ -1646,12 +1647,7 @@ function ThreadInputBox({ onSend }: { onSend: (text: string, alsoSend: boolean) 
           aria-label="Reply in thread"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
-          }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           className="!resize-none !border-0 !px-0 !py-0 max-h-32"
         />
         <div className="mt-1.5 flex items-center gap-2">
@@ -1666,7 +1662,7 @@ function ThreadInputBox({ onSend }: { onSend: (text: string, alsoSend: boolean) 
           </label>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send reply" title="" className="!h-6 !w-6 !min-w-0 !p-0" onClick={send} />
+              <Button variant={hasValue ? 'primary' : 'text'} size="sm" iconOnly startIcon={Send} aria-label="Send reply" title="" onClick={send} className="!h-6 !w-6 !min-w-0 !p-0" />
             </TooltipTrigger>
             <TooltipContent>Send</TooltipContent>
           </Tooltip>
@@ -1686,6 +1682,7 @@ function ThreadPanel({
   onCollapse,
   onClose,
   onSend,
+  onReply,
 }: {
   message: Message
   room: Room
@@ -1696,6 +1693,7 @@ function ThreadPanel({
   onCollapse: () => void
   onClose: () => void
   onSend: (text: string, alsoSend: boolean) => void
+  onReply?: () => void
 }) {
   const [dragging, setDragging] = useState(false)
   const author = message.author === 'me' ? ME : (PEOPLE[message.author] ?? null)
@@ -1779,7 +1777,7 @@ function ThreadPanel({
         </div>
       </ScrollArea>
 
-      <ThreadInputBox onSend={onSend} />
+      <ThreadInputBox onSend={onSend} onReply={onReply} />
     </div>
   )
 }
@@ -1797,6 +1795,7 @@ function Conversation({
   onToggleFullWidth,
   onSend,
   onThreadSend,
+  onAction,
 }: {
   room: Room
   listOpen: boolean
@@ -1807,6 +1806,7 @@ function Conversation({
   onToggleFullWidth: () => void
   onSend: (text: string) => void
   onThreadSend: (parentId: string, text: string, alsoSend: boolean) => void
+  onAction?: (a: ChatAction) => void
 }) {
   // Track the thread root by id (not a snapshot) so the panel re-reads live
   // room state and shows newly sent replies immediately.
@@ -1819,6 +1819,11 @@ function Conversation({
     setThreadParentId(null)
     setThreadExpanded(false)
   }, [room.id])
+
+  function openThread(m: Message) {
+    setThreadParentId(m.id)
+    onAction?.({ type: 'open-thread', roomId: room.id, messageId: m.id })
+  }
 
   return (
     <section className="flex min-w-0 flex-1 overflow-hidden bg-canvas">
@@ -1833,7 +1838,7 @@ function Conversation({
             isFullWidth={fullWidth}
             onToggleFullWidth={onToggleFullWidth}
           />
-          <MessageArea room={room} onOpenThread={(m) => setThreadParentId(m.id)} fullWidth={fullWidth} />
+          <MessageArea room={room} onOpenThread={openThread} fullWidth={fullWidth} />
           <InputBox key={room.id} fullWidth={fullWidth} onSend={onSend} />
         </div>
       )}
@@ -1848,6 +1853,7 @@ function Conversation({
           onCollapse={() => setThreadExpanded(false)}
           onClose={() => { setThreadParentId(null); setThreadExpanded(false) }}
           onSend={(text, alsoSend) => onThreadSend(threadMessage.id, text, alsoSend)}
+          onReply={() => onAction?.({ type: 'thread-reply', roomId: room.id, messageId: threadMessage.id })}
         />
       )}
     </section>
@@ -1855,15 +1861,37 @@ function Conversation({
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function App() {
+// Variant config — 讓 A/B usability test 在「不改基底預設行為」前提下調整初始狀態。
+// 所有欄位 optional,未傳 = 與 base story(apps-chat-chat--default)完全一致。
+export type ChatVariantConfig = {
+  /** 聊天列表初始是否顯示訊息預覽(本專案 A/B 差異點)。預設 true。 */
+  initialShowPreview?: boolean
+  /** 訊息區初始全寬 / 880px 置中。預設 true(全寬)。 */
+  initialFullWidth?: boolean
+  /** 聊天列表初始是否展開。預設 true。 */
+  initialListOpen?: boolean
+}
+
+// 使用者實際操作事件 — 供 usability test 判定任務是否「真的有做對」。
+// onAction 為 optional,未傳(base story)時完全不影響行為。
+export type ChatAction =
+  | { type: 'open-room'; roomId: string; roomTitle: string; unread: boolean }
+  | { type: 'mute-room'; roomId: string; roomTitle: string }
+  | { type: 'open-thread'; roomId: string; messageId: string }
+  | { type: 'thread-reply'; roomId: string; messageId: string }
+
+export default function App({
+  config,
+  onAction,
+}: { config?: ChatVariantConfig; onAction?: (a: ChatAction) => void } = {}) {
   const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS)
   const [activeId, setActiveId] = useState<string>(INITIAL_ROOMS[0].id)
-  const [listOpen, setListOpen] = useState(true)
+  const [listOpen, setListOpen] = useState(config?.initialListOpen ?? true)
   const [listWidth, setListWidth] = useState(320)
-  const [showPreview, setShowPreview] = useState(true)
+  const [showPreview, setShowPreview] = useState(config?.initialShowPreview ?? true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mutedIds, setMutedIds] = useState<Set<string>>(new Set())
-  const [fullWidth, setFullWidth] = useState(true)
+  const [fullWidth, setFullWidth] = useState(config?.initialFullWidth ?? true)
   const [favOrder, setFavOrder] = useState<string[]>(
     INITIAL_ROOMS.filter((r) => r.section === 'favorites').map((r) => r.id)
   )
@@ -1872,11 +1900,22 @@ export default function App() {
   const unreadCount = rooms.filter((r) => r.unread && !mutedIds.has(r.id)).length
 
   function handleToggleMute(id: string) {
+    const willMute = !mutedIds.has(id)
     setMutedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
+    if (willMute) {
+      const r = rooms.find((x) => x.id === id)
+      onAction?.({ type: 'mute-room', roomId: id, roomTitle: r?.title ?? id })
+    }
+  }
+
+  function handleSelectRoom(id: string) {
+    setActiveId(id)
+    const r = rooms.find((x) => x.id === id)
+    if (r) onAction?.({ type: 'open-room', roomId: r.id, roomTitle: r.title, unread: !!r.unread })
   }
 
   function handleToggleFavorite(id: string) {
@@ -1922,7 +1961,7 @@ export default function App() {
           <ChatList
             rooms={rooms}
             activeId={activeId}
-            onSelect={setActiveId}
+            onSelect={handleSelectRoom}
             onCollapse={() => setListOpen(false)}
             width={listWidth}
             onWidthChange={setListWidth}
@@ -1943,6 +1982,7 @@ export default function App() {
           onToggleMute={() => handleToggleMute(current.id)}
           onSend={handleSend}
           onThreadSend={handleThreadSend}
+          onAction={onAction}
         />
       </div>
       <SettingsModal
