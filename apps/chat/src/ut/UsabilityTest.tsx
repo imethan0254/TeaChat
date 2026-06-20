@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Button, Input, ProgressBar, Notice } from '@qijenchen/design-system'
 import {
   ClipboardList, Target, Info, FileSpreadsheet, ClipboardCopy, RotateCcw, Check, ArrowRight,
-  GripVertical, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, MicOff,
+  GripVertical, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, MicOff, Lock,
 } from 'lucide-react'
 import App, { type ChatVariantConfig, type ChatAction } from '../App'
 
@@ -322,6 +322,38 @@ function RunPhase({ project, variant, onDone }: { project: UTProject; variant: s
       <App config={v.config} onAction={(a) => { actionsRef.current.push(a) }} />
       <FloatingStatus variant={variant} rec={rec} />
       <TaskPanel tasks={project.tasks} index={index} onComplete={complete} />
+    </div>
+  )
+}
+
+// ── 密碼閘門(每個測試開始前)─────────────────────────────────────────────────
+function PasswordGate({ password, onUnlock }: { password: string; onUnlock: () => void }) {
+  const [val, setVal] = useState('')
+  const [err, setErr] = useState(false)
+  function submit() {
+    if (val === password) onUnlock()
+    else setErr(true)
+  }
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-canvas p-6">
+      <div className="w-full max-w-[400px] rounded-xl border border-neutral-5 bg-surface p-8 text-center shadow-lg">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--color-info-subtle)' }}>
+          <Lock size={22} style={{ color: 'var(--color-info-text)' }} />
+        </div>
+        <h1 className="text-neutral-9" style={{ fontSize: 18, fontWeight: 600 }}>請輸入測試密碼</h1>
+        <p className="mt-1 text-neutral-7" style={{ fontSize: 13 }}>此測試內容受密碼保護,僅供受邀者進行。</p>
+        <Input
+          className="mt-4"
+          type="password"
+          placeholder="請輸入密碼"
+          value={val}
+          autoFocus
+          onChange={(e) => { setVal(e.target.value); setErr(false) }}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+        />
+        {err && <p className="mt-2" style={{ fontSize: 12, color: 'var(--color-error-text)' }}>密碼錯誤,請再試一次。</p>}
+        <Button variant="primary" className="mt-4 w-full" disabled={!val} onClick={submit}>進入測試</Button>
+      </div>
     </div>
   )
 }
@@ -662,10 +694,13 @@ function CombinedResultScreen({ project, runA, runB, tester, onReset }: { projec
 }
 
 // ── 對外:單版本流程(VersionA / VersionB 用)────────────────────────────────
-export function UsabilityTest({ project, variant }: { project: UTProject; variant: string }) {
+export function UsabilityTest({ project, variant, password = '0000' }: { project: UTProject; variant: string; password?: string }) {
+  const [unlocked, setUnlocked] = useState(false)
   const [phase, setPhase] = useState<'intro' | 'running' | 'done'>('intro')
   const [tester, setTester] = useState('')
   const [run, setRun] = useState<VariantRun | null>(null)
+
+  if (!unlocked) return <PasswordGate password={password} onUnlock={() => setUnlocked(true)} />
 
   if (phase === 'intro') {
     return (
@@ -686,14 +721,17 @@ export function UsabilityTest({ project, variant }: { project: UTProject; varian
 }
 
 // ── 對外:A→B 雙版本綜合流程 ────────────────────────────────────────────────
-export function UsabilityTestAB({ project, order = ['A', 'B'] }: { project: UTProject; order?: [string, string] }) {
+export function UsabilityTestAB({ project, order = ['A', 'B'], password = '0000' }: { project: UTProject; order?: [string, string]; password?: string }) {
   const [vA, vB] = order
+  const [unlocked, setUnlocked] = useState(false)
   const [phase, setPhase] = useState<'intro' | 'runA' | 'interstitial' | 'runB' | 'done'>('intro')
   const [tester, setTester] = useState('')
   const [runA, setRunA] = useState<VariantRun | null>(null)
   const [runB, setRunB] = useState<VariantRun | null>(null)
 
   function reset() { setPhase('intro'); setTester(''); setRunA(null); setRunB(null) }
+
+  if (!unlocked) return <PasswordGate password={password} onUnlock={() => setUnlocked(true)} />
 
   if (phase === 'intro') {
     return (
