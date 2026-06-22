@@ -1379,27 +1379,29 @@ function MessageBubble({
   ) : null
 
   // "Replied to a thread" link — shown on a main-area copy of a thread reply
-  // ("Also send to chatroom"). Click opens that thread. Label truncates to one line.
+  // ("Also send to chatroom"). Click opens that thread. The "replied to a thread:"
+  // prefix never truncates (shrink-0); only the parent-message text truncates, and
+  // the row may grow wider than the bubble to fit the prefix. Color neutral-7.
   const repliedParent = !isInThread && message.repliedToThreadParentId
     ? room.messages.find((m) => m.id === message.repliedToThreadParentId) ?? null
     : null
   const repliedLink = repliedParent ? (
     <div className={`mt-0.5 flex min-w-0 max-w-full items-center gap-1 ${mine ? 'justify-end' : ''}`}>
-      {!mine && (
-        <div
-          className="shrink-0 border-l border-b rounded-bl-[8px]"
-          style={{ width: 24, height: 12, borderColor: 'var(--color-neutral-4)' }}
-        />
-      )}
+      <div
+        className="shrink-0 border-l border-b rounded-bl-[8px]"
+        style={{ width: 24, height: 12, borderColor: 'var(--color-neutral-4)' }}
+      />
       <button
         type="button"
         className="flex min-w-0 items-center gap-1 hover:underline"
-        style={{ color: 'var(--color-primary)' }}
         onClick={() => onOpenThread(repliedParent)}
       >
-        <MessagesSquare size={16} className="shrink-0" style={{ color: 'var(--color-primary)' }} />
-        <span className="truncate" style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%', color: 'var(--color-primary)' }}>
-          replied to a thread: {repliedParent.text}
+        <MessagesSquare size={16} className="shrink-0" style={{ color: 'var(--color-neutral-7)' }} />
+        <span className="shrink-0 whitespace-nowrap" style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>
+          replied to a thread:
+        </span>
+        <span className="min-w-0 truncate" style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>
+          {repliedParent.text}
         </span>
       </button>
     </div>
