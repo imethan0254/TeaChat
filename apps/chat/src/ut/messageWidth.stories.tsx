@@ -18,7 +18,23 @@ const messageWidthProject: UTProject<ChatAction> = {
     '過程中請盡量講出你的想法（放聲思考）,例如訊息會不會太寬不好讀、表格好不好掃。',
     '右下角會出現任務指示;請「實際完成」該操作後再按「完成,下一步」。',
     '沒有實際完成就按下一步,該任務會被記為「失敗」。',
+    '每個任務做完會跳出一個簡短問卷,最後還有整體問卷。',
     '任務指示框可拖曳移動,避免擋到要操作的地方。',
+  ],
+  // 任務後問卷:每個任務後收即時難易度感受(SEQ,7 點)。
+  postTaskSurvey: [
+    {
+      id: 'seq',
+      questionType: 'singleEase',
+      prompt: '整體而言,這個任務有多容易或多困難?',
+      scalePoints: 7,
+      anchors: { min: '非常困難', max: '非常容易' },
+    },
+  ],
+  // 整場結束問卷:用開放題引導受測者說出對「寬度 / 好讀程度」的整體觀點。
+  postTestSurvey: [
+    { id: 'readable', questionType: 'writtenResponse', prompt: '剛剛兩種寬度,哪一個讓你比較好讀長訊息或掃描表格?可以說說原因嗎?', minChars: 15 },
+    { id: 'change', questionType: 'writtenResponse', prompt: '如果可以調整訊息區的版面,你會怎麼改?', required: false },
   ],
   tasks: [
     {
