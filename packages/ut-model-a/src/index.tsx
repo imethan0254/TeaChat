@@ -862,86 +862,92 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, onReset }: 
   )
 }
 
-// ── 綜合結論(A vs B)─────────────────────────────────────────────────────────
-function concludeText(a: VariantRun, b: VariantRun) {
-  if (a.successCount === b.successCount) {
-    return `兩版本任務成功數相同(各 ${a.successCount}/${a.total},${a.rate}%)。建議再參考完成耗時與受測者主觀回饋來判斷。`
+// ── 綜合結論(N 個版本)──────────────────────────────────────────────────────
+function concludeMulti(runs: VariantRun[]) {
+  const total = runs[0]?.total ?? 0
+  const max = Math.max(...runs.map((r) => r.successCount))
+  const best = runs.filter((r) => r.successCount === max)
+  if (best.length === runs.length) {
+    return `各版本任務成功數相同(各 ${max}/${total})。建議再參考完成耗時與受測者主觀回饋來判斷。`
   }
-  const better = a.successCount > b.successCount ? a : b
-  const worse = better === a ? b : a
-  return `${better.variantLabel}(版本 ${better.variant})任務成功率較高:${better.rate}%(${better.successCount}/${better.total}) vs ${worse.rate}%(${worse.successCount}/${worse.total}),整體易用性表現較佳。`
+  if (best.length > 1) {
+    return `${best.map((r) => `版本 ${r.variant}`).join('、')} 並列最高(${max}/${total},${best[0].rate}%);其餘版本較低,可再用耗時 / 回饋區分。`
+  }
+  const b = best[0]
+  const others = runs.filter((r) => r !== b)
+  return `版本 ${b.variant}(${b.variantLabel})任務成功率最高:${b.rate}%(${b.successCount}/${b.total}),優於 ${others.map((r) => `版本 ${r.variant} ${r.rate}%`).join('、')},整體易用性表現最佳。`
 }
 // 放聲思考摘要(關鍵字擷取,彙整進結論)。
-function thinkAloudNote(a: VariantRun, b: VariantRun) {
-  if (!a.transcript && !b.transcript) return '本次未取得放聲思考逐字稿(未授權麥克風或瀏覽器不支援)。'
-  const da = digestTranscript(a.transcript)
-  const db = digestTranscript(b.transcript)
-  return `放聲思考重點 — 版本 A:${da.length ? da.join(';') : '(無明顯關鍵反饋)'};版本 B:${db.length ? db.join(';') : '(無明顯關鍵反饋)'}。`
+function thinkAloudNote(runs: VariantRun[]) {
+  if (runs.every((r) => !r.transcript)) return '本次未取得放聲思考逐字稿(未授權麥克風或瀏覽器不支援)。'
+  return '放聲思考重點 — ' + runs.map((r) => {
+    const d = digestTranscript(r.transcript)
+    return `版本 ${r.variant}:${d.length ? d.join(';') : '(無明顯關鍵反饋)'}`
+  }).join(' / ') + '。'
 }
 
-function CombinedResultScreen({ project, runA, runB, tester, postTestAnswers, onReset }: { project: UTProject<any>; runA: VariantRun; runB: VariantRun; tester: string; postTestAnswers: SurveyAnswer[]; onReset: () => void }) {
-  const conclusion = concludeText(runA, runB)
-  const taNote = thinkAloudNote(runA, runB)
+function CombinedResultScreen({ project, runs, tester, postTestAnswers, onReset }: { project: UTProject<any>; runs: VariantRun[]; tester: string; postTestAnswers: SurveyAnswer[]; onReset: () => void }) {
+  const conclusion = concludeMulti(runs)
+  const taNote = thinkAloudNote(runs)
+  const variantsLabel = runs.map((r) => r.variant).join(' vs ')
+  const hasSurvey = runs.some((r) => r.taskSurveys.length > 0) || postTestAnswers.length > 0
 
   function excel() {
     const taskRows = project.tasks.map((t, i) => {
-      const oa = runA.outcomes.find((o) => o.id === t.id)
-      const ob = runB.outcomes.find((o) => o.id === t.id)
-      return [
-        i + 1, t.title,
-        oa?.result === 'success' ? '成功' : '失敗', oa?.reason ?? '',
-        ob?.result === 'success' ? '成功' : '失敗', ob?.reason ?? '',
-      ]
+      const cells: (string | number)[] = [i + 1, t.title]
+      runs.forEach((r) => {
+        const o = r.outcomes.find((x) => x.id === t.id)
+        cells.push(o?.result === 'success' ? '成功' : '失敗', o?.reason ?? '')
+      })
+      return cells
     })
+    const header: string[] = ['#', '任務']
+    runs.forEach((r) => header.push(`${r.variant} 結果`, `${r.variant} 失敗原因`))
     const rows: (string | number)[][] = [
       ['測試名稱', project.title],
       ['測試者', tester || '—'],
-      ['測試日期', fmtDateTime(runA.startedAt)],
+      ['測試日期', fmtDateTime(runs[0].startedAt)],
       [],
-      ['版本 A 達成率', `${runA.rate}% (${runA.successCount}/${runA.total})`],
-      ['版本 B 達成率', `${runB.rate}% (${runB.successCount}/${runB.total})`],
+      ...runs.map((r) => [`版本 ${r.variant} 達成率`, `${r.rate}% (${r.successCount}/${r.total})`]),
       ['綜合結論', conclusion],
       ['放聲思考摘要', taNote],
       [],
-      ['#', '任務', 'A 結果', 'A 失敗原因', 'B 結果', 'B 失敗原因'],
+      header,
       ...taskRows,
       [],
-      ['版本 A 逐字稿', runA.transcript || '(無)'],
-      ['版本 B 逐字稿', runB.transcript || '(無)'],
-      ...(runA.taskSurveys.length || runB.taskSurveys.length || postTestAnswers.length
+      ...runs.map((r) => [`版本 ${r.variant} 逐字稿`, r.transcript || '(無)']),
+      ...(hasSurvey
         ? [[], ['類別', '題目', '作答'],
-            ...surveyExcelRows(runA.taskSurveys, []).map((r) => [`A · ${r[0]}`, r[1], r[2]]),
-            ...surveyExcelRows(runB.taskSurveys, []).map((r) => [`B · ${r[0]}`, r[1], r[2]]),
+            ...runs.flatMap((r) => surveyExcelRows(r.taskSurveys, []).map((row) => [`${r.variant} · ${row[0]}`, row[1], row[2]])),
             ...surveyExcelRows([], postTestAnswers)]
         : []),
     ]
-    downloadExcel(`UT-${project.id}-AB-${tester || 'anon'}.xls`, rows)
+    downloadExcel(`UT-${project.id}-${runs.map((r) => r.variant).join('')}-${tester || 'anon'}.xls`, rows)
   }
   function text() {
     const lines = [
       `測試名稱:${project.title}`,
       `測試者:${tester || '—'}`,
-      `測試日期:${fmtDateTime(runA.startedAt)}`,
+      `測試日期:${fmtDateTime(runs[0].startedAt)}`,
       '',
-      `版本 A(${runA.variantLabel})達成率:${runA.rate}% (${runA.successCount}/${runA.total})`,
-      `版本 B(${runB.variantLabel})達成率:${runB.rate}% (${runB.successCount}/${runB.total})`,
+      ...runs.map((r) => `版本 ${r.variant}(${r.variantLabel})達成率:${r.rate}% (${r.successCount}/${r.total})`),
       '',
       '逐項比較:',
       ...project.tasks.map((t, i) => {
-        const oa = runA.outcomes.find((o) => o.id === t.id)
-        const ob = runB.outcomes.find((o) => o.id === t.id)
-        return `  ${i + 1}. ${t.title}\n     A:${oa?.result === 'success' ? '成功' : `失敗(${oa?.reason ?? ''})`}\n     B:${ob?.result === 'success' ? '成功' : `失敗(${ob?.reason ?? ''})`}`
+        const per = runs.map((r) => {
+          const o = r.outcomes.find((x) => x.id === t.id)
+          return `     ${r.variant}:${o?.result === 'success' ? '成功' : `失敗(${o?.reason ?? ''})`}`
+        }).join('\n')
+        return `  ${i + 1}. ${t.title}\n${per}`
       }),
       '',
       `綜合結論:${conclusion}`,
       `${taNote}`,
       '',
-      `版本 A 逐字稿:${runA.transcript || '(無)'}`,
-      `版本 B 逐字稿:${runB.transcript || '(無)'}`,
-      ...(runA.taskSurveys.length || runB.taskSurveys.length || postTestAnswers.length
+      ...runs.map((r) => `版本 ${r.variant} 逐字稿:${r.transcript || '(無)'}`),
+      ...(hasSurvey
         ? ['',
-            ...surveyTextLines('版本 A ', runA.taskSurveys, []),
-            ...surveyTextLines('版本 B ', runB.taskSurveys, []),
+            ...runs.flatMap((r) => surveyTextLines(`版本 ${r.variant} `, r.taskSurveys, [])),
             ...surveyTextLines('', [], postTestAnswers)]
         : []),
     ]
@@ -949,11 +955,11 @@ function CombinedResultScreen({ project, runA, runB, tester, postTestAnswers, on
   }
 
   const Stat = ({ run }: { run: VariantRun }) => (
-    <div className="flex-1 rounded-lg border border-neutral-4 p-4">
+    <div className="min-w-[150px] flex-1 rounded-lg border border-neutral-4 p-4">
       <p style={{ fontSize: 13, fontWeight: 600 }} className="text-neutral-9">版本 {run.variant}</p>
       <p className="text-neutral-6" style={{ fontSize: 12 }}>{run.variantLabel}</p>
       <div className="mt-2 flex items-baseline gap-2">
-        <span style={{ fontSize: 30, fontWeight: 700 }} className="text-primary">{run.rate}%</span>
+        <span style={{ fontSize: 28, fontWeight: 700 }} className="text-primary">{run.rate}%</span>
         <span className="text-neutral-7" style={{ fontSize: 12 }}>{run.successCount}/{run.total} 成功</span>
       </div>
       <ProgressBar className="mt-2" value={run.rate} height={6} />
@@ -961,16 +967,15 @@ function CombinedResultScreen({ project, runA, runB, tester, postTestAnswers, on
   )
 
   return (
-    <ResultShell badge="綜合測試結果 · 版本 A vs B">
+    <ResultShell badge={`綜合測試結果 · 版本 ${variantsLabel}`}>
       <h1 className="text-neutral-9" style={{ fontSize: 22, fontWeight: 600, lineHeight: '130%' }}>{project.title}</h1>
       <div className="mt-2 text-neutral-8" style={{ fontSize: 13 }}>
         <span className="text-neutral-6">測試者:</span> <b>{tester || '—'}</b>
-        <span className="ml-4 text-neutral-6">測試日期:</span> {fmtDateTime(runA.startedAt)}
+        <span className="ml-4 text-neutral-6">測試日期:</span> {fmtDateTime(runs[0].startedAt)}
       </div>
 
-      <div className="mt-4 flex gap-3">
-        <Stat run={runA} />
-        <Stat run={runB} />
+      <div className="mt-4 flex flex-wrap gap-3">
+        {runs.map((r) => <Stat key={r.variant} run={r} />)}
       </div>
 
       <div className="mt-4 rounded-lg p-4" style={{ backgroundColor: 'var(--color-info-subtle)' }}>
@@ -979,18 +984,18 @@ function CombinedResultScreen({ project, runA, runB, tester, postTestAnswers, on
         <p className="mt-2" style={{ fontSize: 12, lineHeight: '150%', color: 'var(--color-info-text)' }}>{taNote}</p>
       </div>
 
-      <p className="mt-5 text-neutral-9" style={{ fontSize: 13, fontWeight: 600 }}>版本 A 逐項</p>
-      <OutcomeList outcomes={runA.outcomes} />
-      <TranscriptBlock title="版本 A 放聲思考逐字稿" transcript={runA.transcript} />
-      <p className="mt-4 text-neutral-9" style={{ fontSize: 13, fontWeight: 600 }}>版本 B 逐項</p>
-      <OutcomeList outcomes={runB.outcomes} />
-      <TranscriptBlock title="版本 B 放聲思考逐字稿" transcript={runB.transcript} />
+      {runs.map((r) => (
+        <div key={r.variant}>
+          <p className="mt-5 text-neutral-9" style={{ fontSize: 13, fontWeight: 600 }}>版本 {r.variant} 逐項</p>
+          <OutcomeList outcomes={r.outcomes} />
+          <TranscriptBlock title={`版本 ${r.variant} 放聲思考逐字稿`} transcript={r.transcript} />
+          <SurveySection heading={`版本 ${r.variant} 問卷回饋`} taskSurveys={r.taskSurveys} />
+        </div>
+      ))}
 
-      <SurveySection heading="版本 A 問卷回饋" taskSurveys={runA.taskSurveys} />
-      <SurveySection heading="版本 B 問卷回饋" taskSurveys={runB.taskSurveys} />
       <SurveySection heading="整場結束問卷" taskSurveys={[]} postTestAnswers={postTestAnswers} />
 
-      <Notice className="mt-5" variant="info" title="把綜合結果交回給研究人員" description="可匯出 Excel(含 A/B 逐項比較、結論、逐字稿、問卷)或複製純文字。" />
+      <Notice className="mt-5" variant="info" title="把綜合結果交回給研究人員" description="可匯出 Excel(含各版逐項比較、結論、逐字稿、問卷)或複製純文字。" />
       <ExportBar onExcel={excel} onCopyText={text} onReset={onReset} />
     </ResultShell>
   )
@@ -1036,18 +1041,18 @@ export function UsabilityTest<A>({ project, variant, password = '0000' }: { proj
   return <SingleResultScreen project={project} run={run!} tester={tester} postTestAnswers={postTest} onReset={() => { setPhase('intro'); setTester(''); setRun(null); setPostTest([]) }} />
 }
 
-// ── 對外:A→B 雙版本綜合流程 ────────────────────────────────────────────────
-export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '0000' }: { project: UTProject<A>; order?: [string, string]; password?: string }) {
-  const [vA, vB] = order
+// ── 對外:多版本綜合流程(A→B→C…,依序跑完給綜合結論)──────────────────────
+export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '0000' }: { project: UTProject<A>; order?: string[]; password?: string }) {
   const [unlocked, setUnlocked] = useState(false)
-  const [phase, setPhase] = useState<'intro' | 'runA' | 'interstitial' | 'runB' | 'posttest' | 'done'>('intro')
+  const [phase, setPhase] = useState<'intro' | 'run' | 'interstitial' | 'posttest' | 'done'>('intro')
   const [tester, setTester] = useState('')
-  const [runA, setRunA] = useState<VariantRun | null>(null)
-  const [runB, setRunB] = useState<VariantRun | null>(null)
+  const [vIndex, setVIndex] = useState(0)
+  const [runs, setRuns] = useState<VariantRun[]>([])
   const [postTest, setPostTest] = useState<SurveyAnswer[]>([])
   const postTestQs = project.postTestSurvey ?? []
 
-  function reset() { setPhase('intro'); setTester(''); setRunA(null); setRunB(null); setPostTest([]) }
+  function reset() { setPhase('intro'); setTester(''); setVIndex(0); setRuns([]); setPostTest([]) }
+  const orderLabel = order.map((v) => `版本 ${v}`).join(' → ')
 
   if (!unlocked) return <PasswordGate password={password} onUnlock={() => setUnlocked(true)} />
 
@@ -1055,35 +1060,46 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '00
     return (
       <IntroScreen
         project={project}
-        badge="Usability Test · 綜合測試 A → B"
-        note={<>你會<b>依序體驗兩個版本(A 然後 B)</b>,每版各 <b>{project.tasks.length}</b> 項任務。全部完成後會看到 A/B 比較與綜合結論。</>}
+        badge={`Usability Test · 綜合測試 ${order.join(' → ')}`}
+        note={<>你會<b>依序體驗 {order.length} 個版本({orderLabel})</b>,每版各 <b>{project.tasks.length}</b> 項任務。全部完成後會看到各版比較與綜合結論。</>}
         tester={tester}
         onTesterChange={setTester}
-        onStart={() => { if (tester.trim()) setPhase('runA') }}
+        onStart={() => { if (tester.trim()) setPhase('run') }}
       />
     )
   }
-  if (phase === 'runA') {
-    return <RunPhase project={project} variant={vA} onDone={(r) => { setRunA(r); setPhase('interstitial') }} />
+  if (phase === 'run') {
+    const variant = order[vIndex]
+    return (
+      <RunPhase
+        key={variant}
+        project={project}
+        variant={variant}
+        onDone={(r) => {
+          setRuns((prev) => [...prev, r])
+          if (vIndex >= order.length - 1) setPhase(postTestQs.length ? 'posttest' : 'done')
+          else setPhase('interstitial')
+        }}
+      />
+    )
   }
   if (phase === 'interstitial') {
+    const doneV = order[vIndex]
+    const nextV = order[vIndex + 1]
     return (
       <div className="flex h-screen w-full items-center justify-center bg-canvas p-6">
         <div className="w-full max-w-[480px] rounded-xl border border-neutral-5 bg-surface p-8 text-center shadow-lg">
-          <Chip tone="success" className="mb-3">版本 {vA} 完成</Chip>
-          <h2 className="text-neutral-9" style={{ fontSize: 18, fontWeight: 600 }}>接下來進行版本 {vB}</h2>
+          <Chip tone="success" className="mb-3">版本 {doneV} 完成({vIndex + 1}/{order.length})</Chip>
+          <h2 className="text-neutral-9" style={{ fontSize: 18, fontWeight: 600 }}>接下來進行版本 {nextV}</h2>
           <p className="mt-2 text-neutral-7" style={{ fontSize: 13, lineHeight: '150%' }}>
-            版本 {vA} 的任務已完成。按下方按鈕,用同樣的方式完成版本 {vB} 的任務。
+            版本 {doneV} 的任務已完成。按下方按鈕,用同樣的方式完成版本 {nextV} 的任務。
           </p>
-          <Button variant="primary" className="mt-5 w-full" startIcon={ArrowRight} onClick={() => setPhase('runB')}>
-            開始版本 {vB} 測試
+          <Button variant="primary" className="mt-5 w-full" startIcon={ArrowRight} onClick={() => { setVIndex(vIndex + 1); setPhase('run') }}>
+            開始版本 {nextV} 測試
           </Button>
         </div>
       </div>
     )
-  }
-  if (phase === 'runB') {
-    return <RunPhase project={project} variant={vB} onDone={(r) => { setRunB(r); setPhase(postTestQs.length ? 'posttest' : 'done') }} />
   }
   if (phase === 'posttest') {
     return (
@@ -1096,5 +1112,5 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '00
       />
     )
   }
-  return <CombinedResultScreen project={project} runA={runA!} runB={runB!} tester={tester} postTestAnswers={postTest} onReset={reset} />
+  return <CombinedResultScreen project={project} runs={runs} tester={tester} postTestAnswers={postTest} onReset={reset} />
 }
