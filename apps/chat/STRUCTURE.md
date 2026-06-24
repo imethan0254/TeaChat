@@ -128,6 +128,8 @@ Conversation
     └── ThreadInputBox        含 "Also send to chatroom" checkbox；圓角 rounded-lg(8px)；Send 按鈕 24×24 + 無值 text / 有值 primary（與主 InputBox 同規則）（ThreadPanel 容器無 `border-l`，視覺分隔線由 ResizeHandle 1px line 提供）；**可發送**（Enter 或 Send 鈕，`onSend(text, alsoSend)` 上拋至 App `handleThreadSend`）
 ```
 
+> **IME 中文輸入法 Enter 防誤送出（2026-06-24 fix）**：主 InputBox（單行/多行兩處）+ ThreadInputBox 的 Enter-to-send `onKeyDown` 一律加 `!e.nativeEvent.isComposing && e.keyCode !== 229` 防呆 — 中文/日文等輸入法用 Enter 確認候選字時不應觸發 send，只有「選字完成後再按一次 Enter」（此時非 composing）才送出。`keyCode !== 229` 額外擋 Safari 在 composing Enter 上 `isComposing` 回報不準的已知瑕疵。
+
 > **Thread 發送 + "replied to a thread" link（2026-06-19 confirmed）**：
 > - State 改造：`Conversation` 用 `threadParentId`（非 message 快照）+ `room.messages.find(id)` 即時查 live 訊息，確保送出後 thread panel 立即顯示新回覆。`onOpenThread` 一律存 `m.id`。
 > - `handleThreadSend(parentId, text, alsoSend)`（App，SSOT of rooms state）：① 一定 append 一則 `threadReply` 到 `parent.threadMessages`（thread panel 內顯示，**普通 bubble、無 link**）。② 若 `alsoSend` 另 append 一則 `mainCopy` 到 `room.messages`（主區顯示），帶 `repliedToThreadParentId: parentId`。

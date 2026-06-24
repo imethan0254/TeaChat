@@ -1635,7 +1635,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 aria-label="Type a message"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
                 className="!resize-none !border-0 !p-0 w-full max-h-[232px] overflow-y-auto"
               />
               <div className="mt-1.5 flex items-center justify-end">
@@ -1652,7 +1652,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 aria-label="Type a message"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
                 className="!resize-none !border-0 !p-0 min-w-0 flex-1 max-h-[232px] overflow-y-auto"
               />
               {actionButtons}
@@ -1700,7 +1700,7 @@ function ThreadInputBox({ onSend, onReply }: { onSend: (text: string, alsoSend: 
           aria-label="Reply in thread"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
           className="!resize-none !border-0 !px-0 !py-0 max-h-32"
         />
         <div className="mt-1.5 flex items-center gap-2">
