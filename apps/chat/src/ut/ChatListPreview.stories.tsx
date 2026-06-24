@@ -12,6 +12,13 @@ const seqQuestion = {
   prompt: { zh: '整體而言,這個任務有多容易或多困難?', en: 'Overall, how easy or difficult was this task?' },
   scalePoints: 7,
 }
+// 每個任務評分後的「選填」想法輸入框。
+const postTaskComment = {
+  id: 'comment',
+  questionType: 'writtenResponse' as const,
+  prompt: { zh: '想補充說明剛剛的操作或感受嗎?(選填)', en: 'Anything to add about what you just did or felt? (optional)' },
+  required: false,
+}
 
 const chatListPreviewProject: UTProject<ChatAction> = {
   id: 'chat-list-preview',
@@ -27,7 +34,7 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     { zh: '每個任務做完會跳出一個簡短問卷,最後還有整體問卷。', en: 'A short survey pops up after each task, with an overall survey at the end.' },
     { zh: '任務指示框可拖曳移動,避免擋到要操作的地方。', en: 'You can drag the task panel out of the way.' },
   ],
-  postTaskSurvey: [seqQuestion],
+  postTaskSurvey: [seqQuestion, postTaskComment],
   postTestSurvey: [
     { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, minChars: 15 },
     { id: 'change', questionType: 'writtenResponse', prompt: { zh: '如果可以改一件事,你會改什麼?', en: 'If you could change one thing, what would it be?' }, minChars: 15 },
