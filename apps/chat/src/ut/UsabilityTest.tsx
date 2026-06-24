@@ -22,6 +22,8 @@ export type UTask = {
   id: string
   title: string
   hint?: string
+  /** 若設定,任務完成前要求受測者用文字填答(適合偏好/原因類,不依賴錄音)。 */
+  prompt?: string
   check: (actions: ChatAction[]) => { ok: boolean; reason?: string }
 }
 export type UTVariant = { label: string; config: ChatVariantConfig }
@@ -33,7 +35,7 @@ export type UTProject = {
   tasks: UTask[]
   variants: Record<string, UTVariant>
 }
-type TaskOutcome = { id: string; title: string; result: UTaskResult; reason?: string }
+type TaskOutcome = { id: string; title: string; result: UTaskResult; reason?: string; answer?: string }
 type VariantRun = {
   variant: string
   variantLabel: string
@@ -224,14 +226,22 @@ function TaskPanel({
 }: {
   tasks: UTask[]
   index: number
-  onComplete: () => void
+  onComplete: (answer?: string) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [answer, setAnswer] = useState('')
   const { style, handlers } = useDraggable({ right: 24, bottom: 24 })
 
   const total = tasks.length
   const current = tasks[index]
   const isLast = index >= total - 1
+  const needsAnswer = !!current?.prompt
+  const canComplete = !needsAnswer || answer.trim().length > 0
+
+  function complete() {
+    onComplete(needsAnswer ? answer.trim() : undefined)
+    setAnswer('')
+  }
 
   return (
     <div data-draggable className="fixed z-[1000] w-[320px] rounded-xl border border-neutral-5 bg-surface shadow-lg" style={style}>
@@ -259,10 +269,24 @@ function TaskPanel({
           {current.hint && (
             <p className="mt-1 text-neutral-7" style={{ fontSize: 12, lineHeight: '140%' }}>{current.hint}</p>
           )}
-          <p className="mt-2 text-neutral-6" style={{ fontSize: 11, lineHeight: '140%' }}>
-            完成上述操作後再按下方按鈕;未實際完成會記為「失敗」。
-          </p>
-          <Button variant="primary" size="sm" startIcon={Check} className="mt-3 w-full" onClick={onComplete}>
+          {needsAnswer ? (
+            <>
+              <p className="mt-2 text-neutral-6" style={{ fontSize: 11, lineHeight: '140%' }}>{current.prompt}</p>
+              <textarea
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                rows={3}
+                placeholder="在這裡填寫你的回答…"
+                className="mt-2 w-full resize-none rounded-lg border border-neutral-4 bg-canvas px-2 py-1.5 text-neutral-9 outline-none focus:border-[var(--color-primary-hover)]"
+                style={{ fontSize: 12, lineHeight: '150%' }}
+              />
+            </>
+          ) : (
+            <p className="mt-2 text-neutral-6" style={{ fontSize: 11, lineHeight: '140%' }}>
+              完成上述操作後再按下方按鈕;未實際完成會記為「失敗」。
+            </p>
+          )}
+          <Button variant="primary" size="sm" startIcon={Check} className="mt-3 w-full" disabled={!canComplete} onClick={complete}>
             {isLast ? '完成並查看結果' : '完成,下一步'}
           </Button>
         </div>
@@ -284,7 +308,7 @@ function RunPhase({ project, variant, onDone }: { project: UTProject; variant: s
   // 進入測試即自動開始錄音(intro 的按鈕點擊提供了 user gesture)。
   useEffect(() => { rec.start() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function complete() {
+  function complete(answer?: string) {
     const task = project.tasks[index]
     const slice = actionsRef.current.slice(taskStartRef.current)
     const { ok, reason } = task.check(slice)
@@ -293,6 +317,7 @@ function RunPhase({ project, variant, onDone }: { project: UTProject; variant: s
       title: task.title,
       result: ok ? 'success' : 'fail',
       reason: ok ? undefined : (reason ?? '未實際完成任務指定的操作'),
+      answer: answer || undefined,
     })
     taskStartRef.current = actionsRef.current.length
 
@@ -401,7 +426,7 @@ function IntroScreen({
         <div className="mt-4 flex items-start gap-2">
           <Mic size={18} className="mt-0.5 shrink-0 text-primary" />
           <p className="text-neutral-8" style={{ fontSize: 13 }}>
-            開始後會請求<b>麥克風權限</b>,用於自動把你的「放聲思考」轉成逐字稿(可拒絕,拒絕則不錄音)。
+            操作時歡迎你<b>直接說出你的想法和感受</b>。最後一題會請你<b>用文字填寫</b>你的看法,所以不方便出聲也沒關係。
           </p>
         </div>
 
@@ -433,6 +458,9 @@ function OutcomeList({ outcomes }: { outcomes: TaskOutcome[] }) {
             <Chip tone={o.result === 'success' ? 'success' : 'error'}>{o.result === 'success' ? '成功' : '失敗'}</Chip>
             {o.result === 'fail' && o.reason && (
               <p className="mt-0.5 text-neutral-6" style={{ fontSize: 12 }}>失敗原因:{o.reason}</p>
+            )}
+            {o.answer && (
+              <p className="mt-0.5 whitespace-pre-wrap text-neutral-7" style={{ fontSize: 12, lineHeight: '150%' }}>填答:{o.answer}</p>
             )}
           </div>
         </li>
@@ -559,8 +587,8 @@ function SingleResultScreen({ project, run, tester, onReset }: { project: UTProj
       ['耗時(分)', durationMin(run.startedAt, run.finishedAt)],
       ['任務達成率', `${run.rate}% (${run.successCount}/${run.total})`],
       [],
-      ['#', '任務', '結果', '失敗原因'],
-      ...run.outcomes.map((o, i) => [i + 1, o.title, o.result === 'success' ? '成功' : '失敗', o.reason ?? '']),
+      ['#', '任務', '結果', '失敗原因', '填答'],
+      ...run.outcomes.map((o, i) => [i + 1, o.title, o.result === 'success' ? '成功' : '失敗', o.reason ?? '', o.answer ?? '']),
       [],
       ['放聲思考重點', digestTranscript(run.transcript).join(' / ') || '(無)'],
       ['放聲思考逐字稿', run.transcript || '(無)'],
@@ -577,7 +605,7 @@ function SingleResultScreen({ project, run, tester, onReset }: { project: UTProj
       `任務達成率:${run.rate}% (${run.successCount}/${run.total})`,
       '',
       '任務結果:',
-      ...run.outcomes.map((o, i) => `  ${i + 1}. [${o.result === 'success' ? '成功' : '失敗'}] ${o.title}${o.result === 'fail' && o.reason ? ` — 失敗原因:${o.reason}` : ''}`),
+      ...run.outcomes.map((o, i) => `  ${i + 1}. [${o.result === 'success' ? '成功' : '失敗'}] ${o.title}${o.result === 'fail' && o.reason ? ` — 失敗原因:${o.reason}` : ''}${o.answer ? `\n     填答:${o.answer}` : ''}`),
       '',
       `放聲思考重點:${digestTranscript(run.transcript).join(' / ') || '(無)'}`,
       `放聲思考逐字稿:${run.transcript || '(無)'}`,
@@ -652,12 +680,12 @@ function CombinedResultScreen({ project, runs, tester, onReset }: { project: UTP
       const cells: (string | number)[] = [i + 1, t.title]
       runs.forEach((r) => {
         const o = r.outcomes.find((x) => x.id === t.id)
-        cells.push(o?.result === 'success' ? '成功' : '失敗', o?.reason ?? '')
+        cells.push(o?.result === 'success' ? '成功' : '失敗', o?.reason ?? '', o?.answer ?? '')
       })
       return cells
     })
     const header: string[] = ['#', '任務']
-    runs.forEach((r) => header.push(`${r.variant} 結果`, `${r.variant} 失敗原因`))
+    runs.forEach((r) => header.push(`${r.variant} 結果`, `${r.variant} 失敗原因`, `${r.variant} 填答`))
     const rows: (string | number)[][] = [
       ['測試名稱', project.title],
       ['測試者', tester || '—'],
@@ -686,7 +714,7 @@ function CombinedResultScreen({ project, runs, tester, onReset }: { project: UTP
       ...project.tasks.map((t, i) => {
         const per = runs.map((r) => {
           const o = r.outcomes.find((x) => x.id === t.id)
-          return `     ${r.variant}:${o?.result === 'success' ? '成功' : `失敗(${o?.reason ?? ''})`}`
+          return `     ${r.variant}:${o?.result === 'success' ? '成功' : `失敗(${o?.reason ?? ''})`}${o?.answer ? ` — 填答:${o.answer}` : ''}`
         }).join('\n')
         return `  ${i + 1}. ${t.title}\n${per}`
       }),
