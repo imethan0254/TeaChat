@@ -77,6 +77,21 @@ const chatListPreviewProject: UTProject<ChatAction> = {
         return { ok: false, reason: { zh: '已開啟討論串但未送出回覆', en: 'Opened a thread but did not send a reply' } }
       },
     },
+    {
+      id: 't5',
+      title: {
+        zh: '找到可以開關「聊天列表顯示最新訊息預覽(Show message previews for chats)」的設定,把它調成你個人比較喜歡的狀態;並請說出:有沒有顯示最新訊息對你的差別、以及你為什麼偏好這樣設定。',
+        en: 'Find the setting that toggles "Show message previews for chats", set it to whatever you personally prefer, and say out loud: what difference the preview makes for you, and why you prefer that setting.',
+      },
+      hint: {
+        zh: '一邊操作一邊放聲說出你的想法(會被錄成逐字稿);偏好原因會記錄在你的逐字稿與重點裡。',
+        en: 'Think aloud while you do it (it is transcribed); your reasoning is captured in the transcript and highlights.',
+      },
+      check: (acts) =>
+        acts.some((a) => a.type === 'open-settings' || a.type === 'toggle-preview')
+          ? { ok: true }
+          : { ok: false, reason: { zh: '未找到 / 未開啟「顯示訊息預覽」的設定', en: 'Did not find / open the "Show message previews" setting' } },
+    },
   ],
   variants: {
     A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true }),
