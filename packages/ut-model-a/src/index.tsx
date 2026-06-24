@@ -773,12 +773,14 @@ function IntroScreen({
           <Mic size={18} className="mt-0.5 shrink-0 text-primary" />
           <p className="text-neutral-8" style={{ fontSize: 13 }}>
             開始後會請求<b>麥克風權限</b>,用於自動把你的「放聲思考」轉成逐字稿(可拒絕,拒絕則不錄音)。
+            <br />
+            <span style={{ color: 'var(--color-warning-text)', fontWeight: 600 }}>注意:特定環境(部分瀏覽器 / 裝置 / 權限或網路設定)可能無法使用畫面錄製或錄音功能。</span>
           </p>
         </div>
 
-        <label className="mt-6 block" style={{ fontSize: 13, fontWeight: 600 }}>請輸入你的姓名</label>
+        <label className="mt-6 block" style={{ fontSize: 13, fontWeight: 600 }}>請輸入你的工號與姓名</label>
         <Input
-          className="mt-1.5" placeholder="例如:王小明" value={tester}
+          className="mt-1.5" placeholder="例如:123321王小明" value={tester}
           onChange={(e) => onTesterChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') onStart() }}
         />
@@ -997,7 +999,7 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
 
       <SurveySection heading="問卷回饋" taskSurveys={run.taskSurveys} postTestAnswers={postTestAnswers} />
 
-      <Notice className="mt-5" variant="info" title="把結果交回給研究人員" description="可匯出 Excel 或複製純文字,貼到你們彙整結果的試算表 / 文件。" />
+      <Notice className="mt-5" variant="warning" dismissible={false} title="把結果交回給研究人員" description="可匯出 Excel 或複製純文字,貼到你們彙整結果的試算表 / 文件。" />
       <ExportBar onExcel={excel} onCopyText={text} onReset={onReset} />
     </ResultShell>
     <ToastHost toasts={toasts} />
@@ -1142,7 +1144,7 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
 
       <SurveySection heading="整場結束問卷" taskSurveys={[]} postTestAnswers={postTestAnswers} />
 
-      <Notice className="mt-5" variant="info" title="把綜合結果交回給研究人員" description="可匯出 Excel(含各版逐項比較、結論、逐字稿、問卷)或複製純文字。" />
+      <Notice className="mt-5" variant="warning" dismissible={false} title="把綜合結果交回給研究人員" description="可匯出 Excel(含各版逐項比較、結論、逐字稿、問卷)或複製純文字。" />
       <ExportBar onExcel={excel} onCopyText={text} onReset={onReset} />
     </ResultShell>
     <ToastHost toasts={toasts} />
