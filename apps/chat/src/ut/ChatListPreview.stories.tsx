@@ -44,7 +44,6 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     {
       id: 't1',
       title: { zh: '找到並開啟「IT Sales - Table格式範例」這個聊天室。', en: "Find and open the 'IT Sales - Table format example' chat." },
-      hint: { zh: '可使用列表上方的搜尋。', en: 'You can use the search at the top of the list.' },
       check: (acts) =>
         acts.some((a) => a.type === 'open-room' && a.roomId === 'semi-sales')
           ? { ok: true }
@@ -66,7 +65,6 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     {
       id: 't3',
       title: { zh: '把任意一個聊天室設為靜音(Mute)。', en: 'Mute any one chat.' },
-      hint: { zh: '在聊天室列上 hover 或開啟更多選單。', en: 'Hover a chat row or open its more menu.' },
       check: (acts) =>
         acts.some((a) => a.type === 'mute-room')
           ? { ok: true }
@@ -87,17 +85,26 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     {
       id: 't5',
       title: {
-        zh: '找到可以開關「聊天列表顯示最新訊息預覽(Show message previews for chats)」的設定,把它調成你個人比較喜歡的狀態;並請說出:有沒有顯示最新訊息對你的差別、以及你為什麼偏好這樣設定。',
-        en: 'Find the setting that toggles "Show message previews for chats", set it to whatever you personally prefer, and say out loud: what difference the preview makes for you, and why you prefer that setting.',
-      },
-      hint: {
-        zh: '一邊操作一邊放聲說出你的想法(會被錄成逐字稿);偏好原因會記錄在你的逐字稿與重點裡。',
-        en: 'Think aloud while you do it (it is transcribed); your reasoning is captured in the transcript and highlights.',
+        zh: '找到可以開關「聊天列表顯示最新訊息預覽(Show message previews for chats)」的設定,把它調成你個人比較喜歡的狀態。',
+        en: 'Find the setting that toggles "Show message previews for chats" and set it to whatever you personally prefer.',
       },
       check: (acts) =>
         acts.some((a) => a.type === 'open-settings' || a.type === 'toggle-preview')
           ? { ok: true }
           : { ok: false, reason: { zh: '未找到 / 未開啟「顯示訊息預覽」的設定', en: 'Did not find / open the "Show message previews" setting' } },
+      // 偏好與原因改用「文字填答」收集(不依賴錄音/逐字稿,人人可填)。
+      postTask: [
+        {
+          id: 't5-pref',
+          questionType: 'writtenResponse',
+          prompt: {
+            zh: '你比較喜歡「有顯示」還是「不顯示」最新訊息預覽?為什麼?(顯示與否對你使用上的差別)',
+            en: 'Do you prefer SHOWING or HIDING the latest-message preview? Why? (how it affects your use)',
+          },
+          minChars: 10,
+        },
+        postTaskComment,
+      ],
     },
   ],
   variants: {
