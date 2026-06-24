@@ -119,6 +119,8 @@ postTestSurvey: [
 ```
 單一任務想問不同題 → 在該 `task.postTask` 放題目(覆寫 project 預設)。
 
+建議 `postTaskSurvey` 除了 SEQ,再加一題 `required: false` 的 `writtenResponse`(選填想法輸入框),讓受測者評分後能補充說明。
+
 指引:文案中性非引導;量表預設 7 點;開放題單場建議 ≤ 1–2 題避免疲勞;`post-task` 題綁該任務、`post-test` 收整體。問卷回應會進結果頁 + Excel/文字匯出。
 
 ## 4c. 雙語 / 順序平衡 / false-easy(產出時預設套用)
