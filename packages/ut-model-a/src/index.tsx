@@ -10,10 +10,10 @@
 //  - 多版本綜合流程 + counterbalancedOrders() 產生消除順序效應的測試順序。
 // ════════════════════════════════════════════════════════════════════════════
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button, Input, Textarea, ProgressBar, Notice } from '@qijenchen/design-system'
+import { Button, Input, Textarea, ProgressBar } from '@qijenchen/design-system'
 import {
   ClipboardList, Target, Info, FileSpreadsheet, ClipboardCopy, RotateCcw, Check, ArrowRight,
-  GripVertical, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, MicOff, Lock, AlertTriangle, Languages,
+  GripVertical, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, Lock, AlertTriangle, Languages, Clock,
 } from 'lucide-react'
 
 // ── i18n:語言 + 可在地化字串 ───────────────────────────────────────────────
@@ -47,6 +47,7 @@ const CHROME = {
     badgeSingle: (v: string) => `Usability Test · 版本 ${v}`,
     badgeCombined: (o: string) => `Usability Test · 綜合測試 ${o}`,
     version: '版本',
+    estTime: (m: number) => `預計作答時間約 ${m} 分鐘`,
     // task panel
     taskTitle: '任務指示', taskHintDefault: '完成上述操作後再按下方按鈕;未實際完成會記為「失敗」。',
     finishSee: '完成並查看結果', doneNext: '完成,下一步', expand: '展開', collapse: '收合',
@@ -121,6 +122,7 @@ const CHROME = {
     badgeSingle: (v: string) => `Usability Test · Version ${v}`,
     badgeCombined: (o: string) => `Usability Test · Combined ${o}`,
     version: 'Version',
+    estTime: (m: number) => `Estimated time: about ${m} minutes`,
     taskTitle: 'Task', taskHintDefault: 'Finish the action above, then press the button below; not actually completing it is recorded as "fail".',
     finishSee: 'Finish & see results', doneNext: 'Done, next', expand: 'Expand', collapse: 'Collapse',
     recording: 'Recording', notRecording: 'Not recording', unsupported: 'Unsupported',
@@ -401,7 +403,7 @@ type ToastMsg = { id: number; text: string }
 function ToastHost({ toasts }: { toasts: ToastMsg[] }) {
   if (!toasts.length) return null
   return (
-    <div className="fixed bottom-6 left-1/2 z-[1300] flex w-[min(92vw,420px)] -translate-x-1/2 flex-col items-stretch gap-2">
+    <div className="fixed bottom-28 left-1/2 z-[1300] flex w-[min(92vw,420px)] -translate-x-1/2 flex-col items-stretch gap-2">
       {toasts.map((t) => (
         <div key={t.id} className="flex items-center gap-2 rounded-lg border border-neutral-5 bg-surface px-4 py-2.5 shadow-lg" style={{ fontSize: 13 }}>
           <Check size={16} className="shrink-0" style={{ color: 'var(--color-success-text)' }} />
@@ -532,7 +534,7 @@ function digestTranscript(transcript: string): string[] {
 }
 
 // ── 進行中左上角小狀態列 ────────────────────────────────────────────────────
-function FloatingStatus({ variant, rec }: { variant: string; rec: ThinkAloud }) {
+function FloatingStatus({ variant }: { variant: string }) {
   const t = tr(useLang())
   const { style, handlers } = useDraggable({ left: 12, top: 12 })
   return (
@@ -544,20 +546,6 @@ function FloatingStatus({ variant, rec }: { variant: string; rec: ThinkAloud }) 
     >
       <GripVertical size={11} className="text-neutral-5" />
       <span style={{ fontSize: 11, fontWeight: 600 }} className="text-neutral-8">{t.version} {variant}</span>
-      {rec.recording ? (
-        <span className="flex items-center gap-1" style={{ fontSize: 11, color: 'var(--color-error-text)' }}>
-          <Mic size={11} />
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: 'var(--color-error-text)' }} />
-          {t.recording}
-        </span>
-      ) : (
-        <span className="flex items-center gap-1 text-neutral-6" style={{ fontSize: 11 }}>
-          <MicOff size={11} />{rec.supported ? t.notRecording : t.unsupported}
-        </span>
-      )}
-      {rec.recording && rec.interim && (
-        <span className="max-w-[110px] truncate text-neutral-5" style={{ fontSize: 10 }}>{rec.interim}</span>
-      )}
     </div>
   )
 }
@@ -829,7 +817,7 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
   return (
     <div className="relative h-screen w-full">
       {v.render({ onAction: (a) => { actionsRef.current.push(a) } })}
-      <FloatingStatus variant={variant} rec={rec} />
+      <FloatingStatus variant={variant} />
       <TaskPanel tasks={project.tasks} index={index} onComplete={complete} />
       {surveyTask && (
         <SurveyStep
@@ -918,12 +906,13 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
 
 // ── intro 畫面 ──────────────────────────────────────────────────────────────
 function IntroScreen({
-  project, badge, note, record, tester, lang, onLangChange, onTesterChange, onStart,
+  project, badge, note, record, estimatedMinutes, tester, lang, onLangChange, onTesterChange, onStart,
 }: {
   project: UTProject<any>
   badge: string
   note: ReactNode
   record: boolean
+  estimatedMinutes: number
   tester: string
   lang: Lang
   onLangChange: (l: Lang) => void
@@ -939,6 +928,11 @@ function IntroScreen({
           <LangToggle lang={lang} onChange={onLangChange} />
         </div>
         <h1 className="text-neutral-9" style={{ fontSize: 22, fontWeight: 600, lineHeight: '130%' }}>{L(project.title, lang)}</h1>
+
+        <div className="mt-2 flex items-center gap-1.5 text-neutral-7" style={{ fontSize: 13 }}>
+          <Clock size={15} className="shrink-0" />
+          <span>{tr(lang).estTime(estimatedMinutes)}</span>
+        </div>
 
         <div className="mt-5 flex items-start gap-2">
           <Target size={18} className="mt-0.5 shrink-0 text-primary" />
@@ -1102,20 +1096,32 @@ function TranscriptBlock({ title, transcript }: { title: string; transcript: str
 }
 
 // ── 結果頁底部的匯出按鈕 ────────────────────────────────────────────────────
-function ExportBar({ onExcel, onCopyText, onReset }: { onExcel: () => void; onCopyText: () => void; onReset: () => void }) {
+// 結果頁底部「固定」動作列:交回提醒 + 匯出 Excel / 複製文字 / 重新測試,永遠可見。
+function ResultActionBar({ onExcel, onCopyText, onReset }: { onExcel: () => void; onCopyText: () => void; onReset: () => void }) {
   const t = tr(useLang())
   const [copied, setCopied] = useState(false)
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
-      <Button variant="secondary" startIcon={FileSpreadsheet} onClick={onExcel}>{t.exportExcel}</Button>
-      <Button
-        variant="secondary"
-        startIcon={copied ? Check : ClipboardCopy}
-        onClick={async () => { onCopyText(); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-      >
-        {copied ? t.copied : t.copyText}
-      </Button>
-      <Button variant="text" startIcon={RotateCcw} className="ml-auto" onClick={onReset}>{t.restart}</Button>
+    <div className="fixed inset-x-0 bottom-0 z-[1200] border-t border-neutral-5 bg-surface" style={{ boxShadow: '0 -2px 10px rgba(0,0,0,0.06)' }}>
+      <div className="mx-auto flex w-full max-w-[680px] flex-wrap items-center gap-3 px-5 py-3">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          <Info size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--color-warning-text)' }} />
+          <div className="min-w-0" style={{ fontSize: 12, lineHeight: '140%' }}>
+            <p style={{ fontWeight: 700 }} className="text-neutral-9">{t.noticeSingleTitle}</p>
+            <p className="text-neutral-7">{t.noticeSingleDesc}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button variant="primary" size="sm" startIcon={FileSpreadsheet} onClick={onExcel}>{t.exportExcel}</Button>
+          <Button
+            variant="secondary" size="sm"
+            startIcon={copied ? Check : ClipboardCopy}
+            onClick={async () => { onCopyText(); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+          >
+            {copied ? t.copied : t.copyText}
+          </Button>
+          <Button variant="text" size="sm" startIcon={RotateCcw} onClick={onReset}>{t.restart}</Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1123,7 +1129,7 @@ function ExportBar({ onExcel, onCopyText, onReset }: { onExcel: () => void; onCo
 function ResultShell({ badge, children }: { badge: string; children: ReactNode }) {
   return (
     <CenterScroll>
-      <div className="w-full max-w-[640px] rounded-xl border border-neutral-5 bg-surface p-8 shadow-lg">
+      <div className="w-full max-w-[640px] rounded-xl border border-neutral-5 bg-surface p-8 pb-32 shadow-lg">
         <Chip tone="info" className="mb-3">{badge}</Chip>
         {children}
       </div>
@@ -1254,10 +1260,8 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
       <TranscriptBlock title={t.transcriptTitleSingle} transcript={run.transcript} />
 
       <SurveySection heading={t.surveyHeadingSingle} taskSurveys={run.taskSurveys} postTestAnswers={postTestAnswers} />
-
-      <Notice className="mt-5" variant="warning" dismissible={false} title={t.noticeSingleTitle} description={t.noticeSingleDesc} />
-      <ExportBar onExcel={excel} onCopyText={text} onReset={onReset} />
     </ResultShell>
+    <ResultActionBar onExcel={excel} onCopyText={text} onReset={onReset} />
     <ToastHost toasts={toasts} />
     </>
   )
@@ -1400,19 +1404,17 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
       ))}
 
       <SurveySection heading={t.surveyPostTest} taskSurveys={[]} postTestAnswers={postTestAnswers} />
-
-      <Notice className="mt-5" variant="warning" dismissible={false} title={t.noticeCombinedTitle} description={t.noticeCombinedDesc} />
-      <ExportBar onExcel={excel} onCopyText={text} onReset={onReset} />
     </ResultShell>
+    <ResultActionBar onExcel={excel} onCopyText={text} onReset={onReset} />
     <ToastHost toasts={toasts} />
     </>
   )
 }
 
 // ── 對外:單版本流程 ────────────────────────────────────────────────────────
-export function UsabilityTest<A>({ project, variant, password = '0000', record = false, defaultLang = 'zh' }: { project: UTProject<A>; variant: string; password?: string; record?: boolean; defaultLang?: Lang }) {
+export function UsabilityTest<A>({ project, variant, password, record = false, defaultLang = 'zh', estimatedMinutes = 15 }: { project: UTProject<A>; variant: string; password?: string; record?: boolean; defaultLang?: Lang; estimatedMinutes?: number }) {
   const [lang, setLang] = useState<Lang>(defaultLang)
-  const [unlocked, setUnlocked] = useState(false)
+  const [unlocked, setUnlocked] = useState(!password)
   const [phase, setPhase] = useState<'intro' | 'running' | 'posttest' | 'done'>('intro')
   const [tester, setTester] = useState('')
   const [run, setRun] = useState<VariantRun | null>(null)
@@ -1426,7 +1428,7 @@ export function UsabilityTest<A>({ project, variant, password = '0000', record =
 
   let content: ReactNode
   if (!unlocked) {
-    content = <PasswordGate password={password} lang={lang} onUnlock={() => setUnlocked(true)} />
+    content = <PasswordGate password={password ?? ""} lang={lang} onUnlock={() => setUnlocked(true)} />
   } else if (phase === 'intro') {
     content = (
       <IntroScreen
@@ -1434,6 +1436,7 @@ export function UsabilityTest<A>({ project, variant, password = '0000', record =
         badge={t.badgeSingle(variant)}
         note={t.noteSingle(project.tasks.length)}
         record={record}
+        estimatedMinutes={estimatedMinutes}
         tester={tester}
         lang={lang}
         onLangChange={setLang}
@@ -1452,9 +1455,9 @@ export function UsabilityTest<A>({ project, variant, password = '0000', record =
 }
 
 // ── 對外:多版本綜合流程(A→B→C…)──────────────────────────────────────────
-export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '0000', record = false, defaultLang = 'zh' }: { project: UTProject<A>; order?: string[]; password?: string; record?: boolean; defaultLang?: Lang }) {
+export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password, record = false, defaultLang = 'zh', estimatedMinutes = 15 }: { project: UTProject<A>; order?: string[]; password?: string; record?: boolean; defaultLang?: Lang; estimatedMinutes?: number }) {
   const [lang, setLang] = useState<Lang>(defaultLang)
-  const [unlocked, setUnlocked] = useState(false)
+  const [unlocked, setUnlocked] = useState(!password)
   const [phase, setPhase] = useState<'intro' | 'run' | 'interstitial' | 'posttest' | 'done'>('intro')
   const [tester, setTester] = useState('')
   const [vIndex, setVIndex] = useState(0)
@@ -1472,7 +1475,7 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '00
 
   let content: ReactNode
   if (!unlocked) {
-    content = <PasswordGate password={password} lang={lang} onUnlock={() => setUnlocked(true)} />
+    content = <PasswordGate password={password ?? ""} lang={lang} onUnlock={() => setUnlocked(true)} />
   } else if (phase === 'intro') {
     content = (
       <IntroScreen
@@ -1480,6 +1483,7 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password = '00
         badge={t.badgeCombined(order.join(' → '))}
         note={t.noteCombined(order.length, orderLabel, project.tasks.length)}
         record={record}
+        estimatedMinutes={estimatedMinutes}
         tester={tester}
         lang={lang}
         onLangChange={setLang}

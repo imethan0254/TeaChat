@@ -34,8 +34,7 @@ const messageWidthProject: UTProject<ChatAction> = {
   ],
   postTaskSurvey: [seqQuestion, postTaskComment],
   postTestSurvey: [
-    { id: 'readable', questionType: 'writtenResponse', prompt: { zh: '剛剛兩種寬度,哪一個讓你比較好讀長訊息或掃描表格?可以說說原因嗎?', en: 'Of the two widths, which made long messages or tables easier to read? Why?' }, minChars: 15 },
-    { id: 'change', questionType: 'writtenResponse', prompt: { zh: '如果可以調整訊息區的版面,你會怎麼改?', en: 'If you could adjust the message-area layout, what would you change?' }, required: false },
+    { id: 'readable', questionType: 'writtenResponse', prompt: { zh: '剛剛兩種寬度,哪一個讓你比較好讀長訊息或掃描表格?可以說說原因嗎?', en: 'Of the two widths, which made long messages or tables easier to read? Why?' }, required: false },
   ],
   tasks: [
     {
@@ -70,8 +69,9 @@ const messageWidthProject: UTProject<ChatAction> = {
     },
   ],
   variants: {
-    A: messageWidthVariant({ zh: '版本 A:訊息區全寬', en: 'Version A: full-width message area' }, { initialFullWidth: true }),
-    B: messageWidthVariant({ zh: '版本 B:訊息區 880px 置中欄', en: 'Version B: 880px centered column' }, { initialFullWidth: false }),
+    // 各版本用不同 roomOrderSeed 打散聊天室排序,避免受測者背順序。
+    A: messageWidthVariant({ zh: '版本 A:訊息區全寬', en: 'Version A: full-width message area' }, { initialFullWidth: true, roomOrderSeed: 1 }),
+    B: messageWidthVariant({ zh: '版本 B:訊息區 880px 置中欄', en: 'Version B: 880px centered column' }, { initialFullWidth: false, roomOrderSeed: 2 }),
   },
 }
 
@@ -79,6 +79,7 @@ const meta: Meta<typeof UsabilityTest> = {
   title: 'UT/Message Area Width',
   component: UsabilityTest,
   parameters: { layout: 'fullscreen' },
+  argTypes: { password: { table: { disable: true } } },
 }
 export default meta
 type Story = StoryObj<typeof UsabilityTest>

@@ -7,6 +7,12 @@ description: 把「易用性測試模型 A(A/B/C 易用性測)」套到一個 pr
 
 把鎖定的測試引擎 `@imethan0254/ut-model-a` 套到一個 prototype,長出一個可跑的 A/B(/C)易用性測試 story。**引擎本體不改**,你只產出 config(目標 + 任務 + 變體 adapter)。
 
+## 鐵則(每次都要遵守)
+
+- **與使用者的所有問答一律用「繁體中文」**:用 `AskUserQuestion` 釐清需求時,問題、選項標題(label)、選項說明(description)全部都要繁體中文,不要用英文。
+- **產出的 story 一律放在 Storybook 的「UT」資料夾**:`meta.title` 必須以 `UT/` 開頭(例:`UT/<測試名稱>`)。Storybook 會依 title 前綴自動建立側邊欄的「UT」群組 —— 沒有就自動長出來,**不需另外手動建資料夾**;所有用本 skill 產出的測試都集中在這個 UT 資料夾。
+  - 注意:`meta.title`(側邊欄路徑)永遠是純字串且以 `UT/` 開頭;`project.title`(畫面標題)才用 `{ zh, en }` 雙語 —— 兩者不同,別搞混。
+
 ## 0. 前置確認(缺一不可)
 
 1. **prototype 原始碼在 repo 裡**(React 元件,Claude 讀得到、改得到)。只有部署網址 → 無法埋操作事件、無法可靠生變體;請先把原始碼放進 repo(或用 `npm run create-app` 起一個)。
@@ -119,15 +125,18 @@ postTestSurvey: [
 ```
 單一任務想問不同題 → 在該 `task.postTask` 放題目(覆寫 project 預設)。
 
-建議 `postTaskSurvey` 除了 SEQ,再加一題 `required: false` 的 `writtenResponse`(選填想法輸入框),讓受測者評分後能補充說明。
+建議 `postTaskSurvey` 除了 SEQ,再加一題 `writtenResponse`(選填想法輸入框),讓受測者評分後能補充說明。
 
-指引:文案中性非引導;量表預設 7 點;開放題單場建議 ≤ 1–2 題避免疲勞;`post-task` 題綁該任務、`post-test` 收整體。問卷回應會進結果頁 + Excel/文字匯出。
+指引:文案中性非引導;量表預設 7 點;**所有 `writtenResponse` 一律 `required: false` 且不要設 `minChars`(選填、不限字數)**;開放題單場建議 ≤ 1–2 題避免疲勞;`post-task` 題綁該任務、`post-test` 收整體。問卷回應會進結果頁 + Excel/文字匯出。
 
 ## 4c. 雙語 / 順序平衡 / false-easy(產出時預設套用)
 
 - **雙語**:所有內容欄位(title / goal / instructions / task.title / hint / check 的 reason / variant.label / survey prompt)請用 `{ zh, en }` 提供。測試說明頁自帶語言切換,預設中文。引擎文字已內建 zh/en,SEQ 錨點不給就用內建雙語。
 - **消除順序效應**:用 `counterbalancedOrders(variants)` 產生順序集合,每個順序做成一支綜合 story(例:A→B→C、B→C→A、C→A→B),全部加 `record`。
 - **false-easy 分析**:只要任務後問卷含 `singleEase`(SEQ),結果頁就會自動標出「做失敗卻自評偏容易」的任務 —— 不需額外設定。
+- **各版本打散排序**:每個 variant 的 config 給不同的 `roomOrderSeed`(或對應你 prototype 的排序 seed),讓清單順序各版不同,避免受測者背順序。check 依 id 不依順序,所以不影響判定。
+- **預計時間**:`UsabilityTest` / `UsabilityTestAB` 可傳 `estimatedMinutes`(預設 15),測試說明頁會顯示「預計作答時間約 N 分鐘」。
+- **結果頁動作列**:匯出 Excel / 複製文字 / 重新測試 + 交回提醒已固定在結果頁底部(引擎內建),不需自己加。
 
 ## 5. 驗證
 

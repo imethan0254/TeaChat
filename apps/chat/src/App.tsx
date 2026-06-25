@@ -2016,6 +2016,27 @@ export type ChatVariantConfig = {
   initialListOpen?: boolean
   /** 多人聊天室頭像樣式:'icon'(預設,現狀)/ 'initial'(室名首字母 + 隨機色)。DM 不受影響。 */
   groupAvatarMode?: 'icon' | 'initial'
+  /** 各版本用不同 seed 打散聊天室排序,避免受測者背誦順序影響結果(同 seed 內順序穩定)。 */
+  roomOrderSeed?: number
+}
+
+// 依 seed 做穩定洗牌(各版本不同 seed → 不同排序,但同版本每次一致)。
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  let s = seed >>> 0 || 1
+  const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff }
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+// 依 roomOrderSeed 重排 INITIAL_ROOMS(favorites / chats 各自打散,保留分組)。未給 seed → 原序。
+function orderedRooms(seed?: number): Room[] {
+  if (seed == null) return INITIAL_ROOMS
+  const favs = seededShuffle(INITIAL_ROOMS.filter((r) => r.section === 'favorites'), seed)
+  const chats = seededShuffle(INITIAL_ROOMS.filter((r) => r.section !== 'favorites'), (seed ^ 0x9e3779b9) >>> 0)
+  return [...favs, ...chats]
 }
 
 // 使用者實際操作事件 — 供 usability test 判定任務是否「真的有做對」。
@@ -2032,8 +2053,8 @@ export default function App({
   config,
   onAction,
 }: { config?: ChatVariantConfig; onAction?: (a: ChatAction) => void } = {}) {
-  const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS)
-  const [activeId, setActiveId] = useState<string>(INITIAL_ROOMS[0].id)
+  const [rooms, setRooms] = useState<Room[]>(() => orderedRooms(config?.roomOrderSeed))
+  const [activeId, setActiveId] = useState<string>(() => orderedRooms(config?.roomOrderSeed)[0].id)
   const [listOpen, setListOpen] = useState(config?.initialListOpen ?? true)
   const [listWidth, setListWidth] = useState(320)
   const [showPreview, setShowPreview] = useState(config?.initialShowPreview ?? true)
@@ -2041,7 +2062,7 @@ export default function App({
   const [mutedIds, setMutedIds] = useState<Set<string>>(new Set())
   const [fullWidth, setFullWidth] = useState(config?.initialFullWidth ?? true)
   const [favOrder, setFavOrder] = useState<string[]>(
-    INITIAL_ROOMS.filter((r) => r.section === 'favorites').map((r) => r.id)
+    () => orderedRooms(config?.roomOrderSeed).filter((r) => r.section === 'favorites').map((r) => r.id)
   )
   // The "Last read" divider only shows for the room/message captured at the
   // moment an unread room is opened, and is cleared the instant the user

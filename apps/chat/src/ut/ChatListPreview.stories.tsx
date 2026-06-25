@@ -36,8 +36,7 @@ const chatListPreviewProject: UTProject<ChatAction> = {
   ],
   postTaskSurvey: [seqQuestion, postTaskComment],
   postTestSurvey: [
-    { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, minChars: 15 },
-    { id: 'change', questionType: 'writtenResponse', prompt: { zh: '如果可以改一件事,你會改什麼?', en: 'If you could change one thing, what would it be?' }, minChars: 15 },
+    { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, required: false },
     { id: 'unexpected', questionType: 'writtenResponse', prompt: { zh: '過程中有沒有遇到任何意外或預期外的狀況?', en: 'Did anything unexpected happen during the process?' }, required: false },
   ],
   tasks: [
@@ -108,9 +107,10 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     },
   ],
   variants: {
-    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true }),
-    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false }),
-    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial' }),
+    // 各版本用不同 roomOrderSeed 打散聊天室排序,避免受測者背順序。
+    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true, roomOrderSeed: 1 }),
+    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false, roomOrderSeed: 2 }),
+    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial', roomOrderSeed: 3 }),
   },
 }
 
@@ -118,6 +118,7 @@ const meta: Meta<typeof UsabilityTest> = {
   title: 'UT/Chat List Preview Message Display Preferences',
   component: UsabilityTest,
   parameters: { layout: 'fullscreen' },
+  argTypes: { password: { table: { disable: true } } },
 }
 export default meta
 type Story = StoryObj<typeof UsabilityTest>
