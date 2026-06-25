@@ -7,6 +7,12 @@ description: 把「易用性測試模型 A(A/B/C 易用性測)」套到一個 pr
 
 把鎖定的測試引擎 `@imethan0254/ut-model-a` 套到一個 prototype,長出一個可跑的 A/B(/C)易用性測試 story。**引擎本體不改**,你只產出 config(目標 + 任務 + 變體 adapter)。
 
+## 鐵則(每次都要遵守)
+
+- **與使用者的所有問答一律用「繁體中文」**:用 `AskUserQuestion` 釐清需求時,問題、選項標題(label)、選項說明(description)全部都要繁體中文,不要用英文。
+- **產出的 story 一律放在 Storybook 的「UT」資料夾**:`meta.title` 必須以 `UT/` 開頭(例:`UT/<測試名稱>`)。Storybook 會依 title 前綴自動建立側邊欄的「UT」群組 —— 沒有就自動長出來,**不需另外手動建資料夾**;所有用本 skill 產出的測試都集中在這個 UT 資料夾。
+  - 注意:`meta.title`(側邊欄路徑)永遠是純字串且以 `UT/` 開頭;`project.title`(畫面標題)才用 `{ zh, en }` 雙語 —— 兩者不同,別搞混。
+
 ## 0. 前置確認(缺一不可)
 
 1. **prototype 原始碼在 repo 裡**(React 元件,Claude 讀得到、改得到)。只有部署網址 → 無法埋操作事件、無法可靠生變體;請先把原始碼放進 repo(或用 `npm run create-app` 起一個)。
