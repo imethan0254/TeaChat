@@ -125,15 +125,18 @@ postTestSurvey: [
 ```
 單一任務想問不同題 → 在該 `task.postTask` 放題目(覆寫 project 預設)。
 
-建議 `postTaskSurvey` 除了 SEQ,再加一題 `required: false` 的 `writtenResponse`(選填想法輸入框),讓受測者評分後能補充說明。
+建議 `postTaskSurvey` 除了 SEQ,再加一題 `writtenResponse`(選填想法輸入框),讓受測者評分後能補充說明。
 
-指引:文案中性非引導;量表預設 7 點;開放題單場建議 ≤ 1–2 題避免疲勞;`post-task` 題綁該任務、`post-test` 收整體。問卷回應會進結果頁 + Excel/文字匯出。
+指引:文案中性非引導;量表預設 7 點;**所有 `writtenResponse` 一律 `required: false` 且不要設 `minChars`(選填、不限字數)**;開放題單場建議 ≤ 1–2 題避免疲勞;`post-task` 題綁該任務、`post-test` 收整體。問卷回應會進結果頁 + Excel/文字匯出。
 
 ## 4c. 雙語 / 順序平衡 / false-easy(產出時預設套用)
 
 - **雙語**:所有內容欄位(title / goal / instructions / task.title / hint / check 的 reason / variant.label / survey prompt)請用 `{ zh, en }` 提供。測試說明頁自帶語言切換,預設中文。引擎文字已內建 zh/en,SEQ 錨點不給就用內建雙語。
 - **消除順序效應**:用 `counterbalancedOrders(variants)` 產生順序集合,每個順序做成一支綜合 story(例:A→B→C、B→C→A、C→A→B),全部加 `record`。
 - **false-easy 分析**:只要任務後問卷含 `singleEase`(SEQ),結果頁就會自動標出「做失敗卻自評偏容易」的任務 —— 不需額外設定。
+- **各版本打散排序**:每個 variant 的 config 給不同的 `roomOrderSeed`(或對應你 prototype 的排序 seed),讓清單順序各版不同,避免受測者背順序。check 依 id 不依順序,所以不影響判定。
+- **預計時間**:`UsabilityTest` / `UsabilityTestAB` 可傳 `estimatedMinutes`(預設 15),測試說明頁會顯示「預計作答時間約 N 分鐘」。
+- **結果頁動作列**:匯出 Excel / 複製文字 / 重新測試 + 交回提醒已固定在結果頁底部(引擎內建),不需自己加。
 
 ## 5. 驗證
 
