@@ -36,7 +36,8 @@ const chatListPreviewProject: UTProject<ChatAction> = {
   ],
   postTaskSurvey: [seqQuestion, postTaskComment],
   postTestSurvey: [
-    { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, required: false },
+    { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, minChars: 15 },
+    { id: 'change', questionType: 'writtenResponse', prompt: { zh: '如果可以改一件事,你會改什麼?', en: 'If you could change one thing, what would it be?' }, minChars: 15 },
     { id: 'unexpected', questionType: 'writtenResponse', prompt: { zh: '過程中有沒有遇到任何意外或預期外的狀況?', en: 'Did anything unexpected happen during the process?' }, required: false },
   ],
   tasks: [
@@ -59,6 +60,19 @@ const chatListPreviewProject: UTProject<ChatAction> = {
       postTask: [
         seqQuestion,
         { id: 't2-open', questionType: 'writtenResponse', prompt: { zh: '你是怎麼判斷哪些聊天室有未讀訊息的?', en: 'How did you tell which chats had unread messages?' }, required: false },
+      ],
+    },
+    {
+      id: 't-search',
+      title: { zh: '用聊天列表上方的「搜尋」,找到並開啟名稱含「Sales」的聊天室。', en: 'Use the search at the top of the chat list to find and open a chat whose name contains "Sales".' },
+      check: (acts) =>
+        acts.some((a) => a.type === 'open-room' && a.roomTitle.includes('Sales'))
+          ? { ok: true }
+          : { ok: false, reason: { zh: '未開啟名稱含「Sales」的聊天室', en: 'Did not open a chat whose name contains "Sales"' } },
+      postTask: [
+        seqQuestion,
+        { id: 'search-exp', questionType: 'writtenResponse', prompt: { zh: '這個搜尋好不好用?有沒有找到你要的?為什麼?', en: 'Was the search easy to use? Did it find what you wanted? Why?' }, minChars: 10 },
+        { id: 'search-want', questionType: 'writtenResponse', prompt: { zh: '你會希望搜尋還能搜到什麼?(例如:訊息內容、人名、檔案)', en: 'What else would you want search to find? (e.g., message content, people, files)' }, required: false },
       ],
     },
     {
@@ -107,10 +121,9 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     },
   ],
   variants: {
-    // 各版本用不同 roomOrderSeed 打散聊天室排序,避免受測者背順序。
-    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true, roomOrderSeed: 1 }),
-    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false, roomOrderSeed: 2 }),
-    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial', roomOrderSeed: 3 }),
+    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true }),
+    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false }),
+    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial' }),
   },
 }
 
@@ -118,7 +131,6 @@ const meta: Meta<typeof UsabilityTest> = {
   title: 'UT/Chat List Preview Message Display Preferences',
   component: UsabilityTest,
   parameters: { layout: 'fullscreen' },
-  argTypes: { password: { table: { disable: true } } },
 }
 export default meta
 type Story = StoryObj<typeof UsabilityTest>
