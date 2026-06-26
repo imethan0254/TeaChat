@@ -1,7 +1,7 @@
 // Chat prototype — 3-column messaging UI(Nav rail / Chat list / Conversation + Thread panel)
 // v3.1: tooltip fix / overflow fix / header mute / status outside bubble / reaction menus / thread panel cleanup
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import {
   TooltipProvider,
   Tooltip,
@@ -184,6 +184,9 @@ type Message = {
   // Set on a main-area copy of a thread reply (when "Also send to chatroom" is on).
   // Points at the thread's root message; drives the "replied to a thread" link.
   repliedToThreadParentId?: string
+  // ISO 'YYYY-MM-DD' send date, used to group bubbles under a date divider.
+  // Omitted = defaults to "today" (most demo messages only carry a HH:MM time).
+  date?: string
 }
 
 type Room = {
@@ -321,7 +324,7 @@ const INITIAL_ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.shinichi,
     messages: [
-      { id: 'm1', author: 'shinichi', text: 'Morning! Is the oolong tasting flight ready?', time: '09:12', reactions: [{ emoji: '👍', count: 8 }], threadMessages: [
+      { id: 'm1', author: 'shinichi', text: 'Morning! Is the oolong tasting flight ready?', time: '09:12', date: '2026-06-22', reactions: [{ emoji: '👍', count: 8 }], threadMessages: [
         { id: 'm1-t1', author: 'me', text: "I'll confirm with the sourcing team first.", time: '09:13' },
         { id: 'm1-t2', author: 'shinichi', text: 'The Dong Ding batch or the High Mountain?', time: '09:13' },
         { id: 'm1-t3', author: 'me', text: 'Both — 4 samples each.', time: '09:13' },
@@ -331,8 +334,8 @@ const INITIAL_ROOMS: Room[] = [
         { id: 'm1-t7', author: 'shinichi', text: 'Perfect. See everyone at 10:30.', time: '09:15' },
         { id: 'm1-t8', author: 'me', text: '👍 See you there.', time: '09:15' },
       ] },
-      { id: 'm2', author: 'me', text: 'All set — 10:30 in tasting room No.3.', time: '09:14', msgStatus: 'sent' },
-      { id: 'm3', author: 'shinichi', text: 'Great, I will prepare the scoring sheet.', time: '09:15' },
+      { id: 'm2', author: 'me', text: 'All set — 10:30 in tasting room No.3.', time: '09:14', date: '2026-06-24', msgStatus: 'sent' },
+      { id: 'm3', author: 'shinichi', text: 'Great, I will prepare the scoring sheet.', time: '09:15', date: '2026-06-24' },
       {
         id: 'm4', author: 'shinichi', time: '09:18',
         text: "Just finished reviewing the Dong Ding samples from the Lugu Co-op. The spring harvest this year is noticeably lighter in body than last year — likely due to the unusually dry March. The roast on batch #3 is particularly interesting though; it has this subtle honey-caramel finish that lingers for almost a minute. I think it could be a strong candidate for the premium single-origin line. Can you pull the moisture readings and compare against the Q1 benchmark?",
@@ -394,11 +397,11 @@ const INITIAL_ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.ai,
     messages: [
-      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', threadMessages: [
+      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', date: '2026-05-28', threadMessages: [
         { id: 'a1-t1', author: 'ai', text: 'Three oolong, two green tea varieties.', time: '5/28' },
         { id: 'a1-t2', author: 'me', text: 'I will set up the cupping station.', time: '5/28' },
       ] },
-      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '5/28', msgStatus: 'read' },
+      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '5/28', date: '2026-05-28', msgStatus: 'read' },
     ],
   },
   {
@@ -408,7 +411,7 @@ const INITIAL_ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     person: PEOPLE.ran,
-    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: '5/25' }],
+    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: '5/25', date: '2026-05-25' }],
   },
   {
     id: 'product-team',
@@ -497,7 +500,7 @@ const INITIAL_ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     memberKeys: ['kenji', 'yui'],
-    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '5/26' }],
+    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '5/26', date: '2025-05-26' }],
   },
   ...GENERATED_CHAT_ROOMS,
 ]
@@ -565,23 +568,6 @@ function hashString(s: string) {
   let h = 0
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
   return Math.abs(h)
-}
-// 依 seed 做穩定亂序(Fisher-Yates + mulberry32)。同 seed 永遠同結果 → 不會每次 render 跳動。
-// 供 usability test 讓各版本聊天室排序不同(避免受測者記憶位置)。
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const a = arr.slice()
-  let s = seed >>> 0
-  const rand = () => {
-    s = (s + 0x6d2b79f5) | 0
-    let t = Math.imul(s ^ (s >>> 15), 1 | s)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
 }
 function InitialAvatar({ name, size = 32 }: { name: string; size?: number }) {
   const letter = (name.trim()[0] ?? '#').toUpperCase()
@@ -946,6 +932,7 @@ function ChatList({
   onToggleMute,
   onToggleFavorite,
   groupAvatarMode = 'icon',
+  onSearch,
 }: {
   rooms: Room[]
   activeId: string
@@ -959,6 +946,7 @@ function ChatList({
   onToggleMute: (id: string) => void
   onToggleFavorite: (id: string) => void
   groupAvatarMode?: 'icon' | 'initial'
+  onSearch?: () => void
 }) {
   const [openFav, setOpenFav] = useState(true)
   const [openChats, setOpenChats] = useState(true)
@@ -991,7 +979,7 @@ function ChatList({
         <h2 className="flex-1 truncate" style={{ fontSize: 16, fontWeight: 500, lineHeight: '130%', color: 'var(--color-neutral-9)' }}>Chats</h2>
         <div className="flex items-center gap-2">
           <AddPopover />
-          <ListBtn icon={Search} label="Search" />
+          <ListBtn icon={Search} label="Search" onClick={onSearch} />
           <ListBtn icon={PanelLeftClose} label="Collapse sidebar" onClick={onCollapse} />
         </div>
       </header>
@@ -1299,13 +1287,27 @@ function MessageBubble({
   onOpenThread,
   room,
   isInThread,
+  readOnly,
+  flashToken,
 }: {
   message: Message
   isLastMine: boolean
   onOpenThread: (m: Message) => void
   room: Room
   isInThread?: boolean
+  // Search-preview panel: hides the reaction bar and disables thread navigation.
+  readOnly?: boolean
+  // Bumping this (to any truthy, distinct value) re-triggers the one-time indigo-6
+  // background flash on this bubble — used when jumping to a message from search.
+  flashToken?: number
 }) {
+  const [flashing, setFlashing] = useState(false)
+  useEffect(() => {
+    if (!flashToken) return
+    setFlashing(true)
+    const t = setTimeout(() => setFlashing(false), 1200)
+    return () => clearTimeout(t)
+  }, [flashToken])
   const mine = message.author === 'me'
   const author = mine ? null : PEOPLE[message.author] ?? null
   const replyCount = message.threadMessages?.length ?? message.replies ?? 0
@@ -1324,11 +1326,11 @@ function MessageBubble({
   // fit), NOT fit-content — fit-content pulls a wide table's max-content and
   // overflows. min-w-0 lets it shrink below content so the table scrolls inside.
   const bubble = (
-    <div className="relative max-w-full min-w-0" style={isRepliedCopy ? { minWidth: REPLIED_LINK_MIN_W } : undefined}>
-      <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} hideReplyInThread={isInThread} />
+    <div id={`msg-${message.id}`} className="relative max-w-full min-w-0" style={isRepliedCopy ? { minWidth: REPLIED_LINK_MIN_W } : undefined}>
+      {!readOnly && <ReactionBar onOpenThread={() => onOpenThread(message)} mine={mine} room={room} hideReplyInThread={isInThread} />}
       <div
-        className={`rounded-xl p-3 text-body max-w-full min-w-0 ${mine ? 'text-foreground' : 'bg-muted text-foreground'}`}
-        style={mine ? { backgroundColor: '#EBEEFF' } : undefined}
+        className={`rounded-xl p-3 text-body max-w-full min-w-0 transition-colors duration-700 ${mine ? 'text-foreground' : 'bg-muted text-foreground'}`}
+        style={{ backgroundColor: flashing ? 'var(--color-indigo-6)' : (mine ? '#EBEEFF' : undefined) }}
       >
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
         {message.images && message.images.length > 0 && (
@@ -1422,9 +1424,9 @@ function MessageBubble({
       )}
       <button
         type="button"
-        className="flex items-center gap-1 hover:underline"
+        className={`flex items-center gap-1 ${readOnly ? 'cursor-default' : 'hover:underline'}`}
         style={{ color: 'var(--color-primary)' }}
-        onClick={() => onOpenThread(message)}
+        onClick={readOnly ? undefined : () => onOpenThread(message)}
       >
         <MessagesSquare size={16} style={{ color: 'var(--color-primary)' }} />
         <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '130%', color: 'var(--color-primary)' }}>{replyCount} replies</span>
@@ -1451,8 +1453,8 @@ function MessageBubble({
       />
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-1 hover:underline"
-        onClick={() => onOpenThread(repliedParent)}
+        className={`flex min-w-0 flex-1 items-center gap-1 ${readOnly ? 'cursor-default' : 'hover:underline'}`}
+        onClick={readOnly ? undefined : () => onOpenThread(repliedParent)}
       >
         <MessagesSquare size={16} className="shrink-0" style={{ color: 'var(--color-primary)' }} />
         <span className="min-w-0 truncate" style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>
@@ -1557,13 +1559,114 @@ function MessageBubble({
   )
 }
 
-function MessageArea({ room, onOpenThread, fullWidth }: { room: Room; onOpenThread: (m: Message) => void; fullWidth: boolean }) {
+// ── Date divider helpers ────────────────────────────────────────────────────
+// Message.date defaults to "today" when absent (most demo messages only carry
+// a HH:MM time, implying same-day conversation).
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function getMsgDate(m: Message, now: Date): Date {
+  if (!m.date) return startOfDay(now)
+  const [y, mo, d] = m.date.split('-').map(Number)
+  return new Date(y, mo - 1, d)
+}
+
+// ISO-8601 week number (1–53).
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// W<last digit of year><2-digit ISO week>, e.g. week 26 of 2026 → "W626".
+function weekLabel(target: Date): string {
+  const yearDigit = target.getFullYear() % 10
+  const week = String(getISOWeek(target)).padStart(2, '0')
+  return `W${yearDigit}${week}`
+}
+
+// Today → "Today, W626" · Yesterday → "Yesterday, W626" · this week (other day)
+// → "Monday, W626" · this year (earlier) → "5/25, W622" · earlier year → "5/25, 2025, W522".
+function formatDateDivider(target: Date, now: Date): string {
+  const t = startOfDay(target)
+  const n = startOfDay(now)
+  const diffDays = Math.round((n.getTime() - t.getTime()) / 86400000)
+  const week = getISOWeek(target)
+  if (diffDays === 0) return `Today, ${weekLabel(target)}`
+  if (diffDays === 1) return `Yesterday, ${weekLabel(target)}`
+  const sameWeek = diffDays > 0 && diffDays < 7 && getISOWeek(now) === week && now.getFullYear() === target.getFullYear()
+  if (sameWeek) return `${WEEKDAY_NAMES[target.getDay()]}, ${weekLabel(target)}`
+  const md = `${target.getMonth() + 1}/${target.getDate()}`
+  if (target.getFullYear() === now.getFullYear()) return `${md}, ${weekLabel(target)}`
+  return `${md}, ${target.getFullYear()}, ${weekLabel(target)}`
+}
+
+function DateDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 px-10">
+      <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-neutral-4)' }} />
+      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-neutral-7)' }}>{label}</span>
+      <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-neutral-4)' }} />
+    </div>
+  )
+}
+
+function LastReadDivider() {
+  return (
+    <div className="flex items-center gap-3 px-10">
+      <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-primary)' }} />
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-primary)' }}>Last read</span>
+      <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-primary)' }} />
+    </div>
+  )
+}
+
+function MessageArea({
+  room,
+  onOpenThread,
+  fullWidth,
+  lastReadMessageId,
+  readOnly,
+  flashMessageId,
+  flashToken,
+  scrollToMessageId,
+}: {
+  room: Room
+  onOpenThread: (m: Message) => void
+  fullWidth: boolean
+  lastReadMessageId?: string | null
+  // Search-preview panel: hides reaction bars, disables thread navigation.
+  readOnly?: boolean
+  // The message to flash (indigo-6, one-time) — paired with flashToken so the
+  // same message can be re-flashed on a later jump (bump flashToken).
+  flashMessageId?: string | null
+  flashToken?: number
+  // Jump straight to this message instead of the usual scroll-to-bottom.
+  scrollToMessageId?: string | null
+}) {
   const lastMineId = [...room.messages].reverse().find((m) => m.author === 'me')?.id ?? null
   const bottomRef = useRef<HTMLDivElement>(null)
+  const now = new Date()
+
+  // Jump-to-message scroll fires once per flashToken bump — independent of the
+  // bottom-scroll effect below, so a later new message still scrolls to bottom
+  // instead of snapping back to the old flashed message.
+  useEffect(() => {
+    if (scrollToMessageId && flashToken) {
+      document.getElementById(`msg-${scrollToMessageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [flashToken, scrollToMessageId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [room.messages.length])
+
+  let prevDateKey: string | null = null
 
   // Plain overflow div (not DS ScrollArea): Radix Viewport wraps children in a
   // `display:table; min-width:100%` box that grows to a wide table's max-content,
@@ -1577,11 +1680,203 @@ function MessageArea({ room, onOpenThread, fullWidth }: { room: Room; onOpenThre
           className="mx-auto flex flex-col gap-3 min-w-0"
           style={fullWidth ? undefined : { maxWidth: 960 }}
         >
-          {room.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} isLastMine={m.id === lastMineId} onOpenThread={onOpenThread} room={room} />
-          ))}
+          {room.messages.map((m) => {
+            const dateKey = getMsgDate(m, now).toDateString()
+            const showDateDivider = dateKey !== prevDateKey
+            const dateLabel = showDateDivider ? formatDateDivider(getMsgDate(m, now), now) : null
+            prevDateKey = dateKey
+            return (
+              <Fragment key={m.id}>
+                {dateLabel && <DateDivider label={dateLabel} />}
+                {lastReadMessageId === m.id && <LastReadDivider />}
+                <MessageBubble
+                  message={m}
+                  isLastMine={m.id === lastMineId}
+                  onOpenThread={onOpenThread}
+                  room={room}
+                  readOnly={readOnly}
+                  flashToken={m.id === flashMessageId ? flashToken : undefined}
+                />
+              </Fragment>
+            )
+          })}
           <div ref={bottomRef} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Universal search modal — triggered by ChatList's header Search button.
+// No dimmed backdrop (per spec): a transparent full-screen click-catcher behind
+// a floating card. Empty query → empty state. Query → People/Chatroom/Message
+// tabs (People default), result rows referencing Microsoft Teams' search IA.
+// Clicking a Message result opens a read-only preview pane on the right that
+// reuses MessageArea (readOnly, scrolled + flashed to that message); its header
+// swaps all normal actions for a single "View message" button.
+// ════════════════════════════════════════════════════════════════════════════
+function NoSearchResults() {
+  return (
+    <p className="px-4 py-8 text-center" style={{ fontSize: 13, color: 'var(--color-neutral-7)' }}>
+      No results found
+    </p>
+  )
+}
+
+function MessagePreviewHeader({ room, onViewMessage }: { room: Room; onViewMessage: () => void }) {
+  const roomAvatar = room.type === 'dm' && room.person ? <PersonAvatar person={room.person} size={32} /> : <GroupAvatar size={32} />
+  return (
+    <header className="flex shrink-0 items-center gap-2 border-b border-divider bg-surface px-4 py-2">
+      {roomAvatar}
+      <h1 className="min-w-0 flex-1 truncate" style={{ fontSize: 16, fontWeight: 500, lineHeight: '130%' }}>{room.title}</h1>
+      <Button variant="primary" size="sm" onClick={onViewMessage}>View message</Button>
+    </header>
+  )
+}
+
+function SearchModal({
+  rooms,
+  onClose,
+  onNavigateRoom,
+  onViewMessage,
+}: {
+  rooms: Room[]
+  onClose: () => void
+  onNavigateRoom: (roomId: string) => void
+  onViewMessage: (roomId: string, messageId: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [tab, setTab] = useState<'people' | 'chatroom' | 'message'>('people')
+  const [preview, setPreview] = useState<{ roomId: string; messageId: string; token: number } | null>(null)
+  const q = query.trim().toLowerCase()
+
+  const peopleResults = q ? rooms.filter((r) => r.type === 'dm' && r.person && r.person.name.toLowerCase().includes(q)) : []
+  const chatroomResults = q ? rooms.filter((r) => r.title.toLowerCase().includes(q)) : []
+  const messageResults = q
+    ? rooms.flatMap((r) => r.messages.filter((m) => m.text.toLowerCase().includes(q)).map((m) => ({ room: r, message: m })))
+    : []
+
+  const previewRoom = preview ? rooms.find((r) => r.id === preview.roomId) ?? null : null
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div
+        className="absolute left-1/2 flex -translate-x-1/2 overflow-hidden rounded-2xl border border-divider bg-surface shadow-2xl"
+        style={{ top: 80, width: tab === 'message' && previewRoom ? 920 : 560, maxHeight: '70vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex w-[560px] shrink-0 flex-col" style={{ maxHeight: '70vh' }}>
+          <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
+            <Search size={18} style={{ color: 'var(--color-neutral-7)' }} />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setPreview(null) }}
+              placeholder="Search people, chatroom, or message…"
+              className="flex-1 bg-transparent outline-none"
+              style={{ fontSize: 14, color: 'var(--color-foreground)' }}
+            />
+            <button type="button" aria-label="Close search" onClick={onClose} className="rounded-md p-1 hover:bg-neutral-hover">
+              <X size={16} style={{ color: 'var(--color-neutral-7)' }} />
+            </button>
+          </div>
+
+          {!q ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+              <Search size={28} style={{ color: 'var(--color-neutral-5)' }} />
+              <p style={{ fontSize: 13, color: 'var(--color-neutral-7)' }}>Search for people, chatrooms, or messages</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-1 border-b border-divider px-3 pt-2">
+                {(['people', 'chatroom', 'message'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    className="relative px-3 pb-2 capitalize"
+                    style={{ fontSize: 13, fontWeight: 500, color: tab === t ? 'var(--color-primary)' : 'var(--color-neutral-7)' }}
+                  >
+                    {t}
+                    {tab === t && <span className="absolute inset-x-0 -bottom-px h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />}
+                  </button>
+                ))}
+              </div>
+              <div className="scroll-hover min-h-0 flex-1 overflow-y-auto py-2">
+                {tab === 'people' && (peopleResults.length ? peopleResults.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => onNavigateRoom(r.id)}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
+                  >
+                    <PersonAvatar person={r.person!} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.person!.name}</div>
+                      <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>{r.person!.role}</div>
+                    </div>
+                  </button>
+                )) : <NoSearchResults />)}
+
+                {tab === 'chatroom' && (chatroomResults.length ? chatroomResults.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => onNavigateRoom(r.id)}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
+                  >
+                    {r.type === 'dm' && r.person ? <PersonAvatar person={r.person} size={32} /> : <GroupAvatar size={32} />}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.title}</div>
+                      <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>
+                        {r.type === 'dm' ? 'Direct message' : `${r.memberKeys?.length ?? 0} members`}
+                      </div>
+                    </div>
+                  </button>
+                )) : <NoSearchResults />)}
+
+                {tab === 'message' && (messageResults.length ? messageResults.map(({ room, message }) => {
+                  const author = message.author === 'me' ? ME : PEOPLE[message.author]
+                  return (
+                    <button
+                      key={message.id}
+                      type="button"
+                      onClick={() => setPreview({ roomId: room.id, messageId: message.id, token: Date.now() })}
+                      className="flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
+                      style={preview?.messageId === message.id ? { backgroundColor: 'var(--color-neutral-3)' } : undefined}
+                    >
+                      {author ? <PersonAvatar person={author} size={32} /> : <GroupAvatar size={32} />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate" style={{ fontSize: 13, fontWeight: 500 }}>{author?.name ?? message.author}</span>
+                          <span className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>in {room.title}</span>
+                        </div>
+                        <p className="truncate" style={{ fontSize: 13, color: 'var(--color-neutral-8)' }}>{message.text}</p>
+                      </div>
+                      <span className="shrink-0" style={{ fontSize: 11, color: 'var(--color-neutral-6)' }}>{message.time}</span>
+                    </button>
+                  )
+                }) : <NoSearchResults />)}
+              </div>
+            </>
+          )}
+        </div>
+
+        {tab === 'message' && previewRoom && preview && (
+          <div className="flex min-w-0 flex-1 flex-col border-l border-divider">
+            <MessagePreviewHeader room={previewRoom} onViewMessage={() => onViewMessage(preview.roomId, preview.messageId)} />
+            <MessageArea
+              room={previewRoom}
+              onOpenThread={() => {}}
+              fullWidth={false}
+              readOnly
+              flashMessageId={preview.messageId}
+              flashToken={preview.token}
+              scrollToMessageId={preview.messageId}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1652,7 +1947,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 aria-label="Type a message"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
                 className="!resize-none !border-0 !p-0 w-full max-h-[232px] overflow-y-auto"
               />
               <div className="mt-1.5 flex items-center justify-end">
@@ -1669,7 +1964,7 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 aria-label="Type a message"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
                 className="!resize-none !border-0 !p-0 min-w-0 flex-1 max-h-[232px] overflow-y-auto"
               />
               {actionButtons}
@@ -1717,7 +2012,7 @@ function ThreadInputBox({ onSend, onReply }: { onSend: (text: string, alsoSend: 
           aria-label="Reply in thread"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); send() } }}
           className="!resize-none !border-0 !px-0 !py-0 max-h-32"
         />
         <div className="mt-1.5 flex items-center gap-2">
@@ -1867,6 +2162,9 @@ function Conversation({
   onThreadSend,
   onAction,
   groupAvatarMode = 'icon',
+  lastReadMessageId,
+  flashMessageId,
+  flashToken,
 }: {
   room: Room
   listOpen: boolean
@@ -1879,6 +2177,10 @@ function Conversation({
   onThreadSend: (parentId: string, text: string, alsoSend: boolean) => void
   onAction?: (a: ChatAction) => void
   groupAvatarMode?: 'icon' | 'initial'
+  lastReadMessageId?: string | null
+  // Jump-from-search: scrolls to + one-time-flashes (indigo-6) this message.
+  flashMessageId?: string | null
+  flashToken?: number
 }) {
   // Track the thread root by id (not a snapshot) so the panel re-reads live
   // room state and shows newly sent replies immediately.
@@ -1911,7 +2213,15 @@ function Conversation({
             onToggleFullWidth={onToggleFullWidth}
             groupAvatarMode={groupAvatarMode}
           />
-          <MessageArea room={room} onOpenThread={openThread} fullWidth={fullWidth} />
+          <MessageArea
+            room={room}
+            onOpenThread={openThread}
+            fullWidth={fullWidth}
+            lastReadMessageId={lastReadMessageId}
+            flashMessageId={flashMessageId}
+            flashToken={flashToken}
+            scrollToMessageId={flashMessageId}
+          />
           <InputBox key={room.id} fullWidth={fullWidth} onSend={onSend} />
         </div>
       )}
@@ -1945,6 +2255,27 @@ export type ChatVariantConfig = {
   initialListOpen?: boolean
   /** 多人聊天室頭像樣式:'icon'(預設,現狀)/ 'initial'(室名首字母 + 隨機色)。DM 不受影響。 */
   groupAvatarMode?: 'icon' | 'initial'
+  /** 各版本用不同 seed 打散聊天室排序,避免受測者背誦順序影響結果(同 seed 內順序穩定)。 */
+  roomOrderSeed?: number
+}
+
+// 依 seed 做穩定洗牌(各版本不同 seed → 不同排序,但同版本每次一致)。
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  let s = seed >>> 0 || 1
+  const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff }
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+// 依 roomOrderSeed 重排 INITIAL_ROOMS(favorites / chats 各自打散,保留分組)。未給 seed → 原序。
+function orderedRooms(seed?: number): Room[] {
+  if (seed == null) return INITIAL_ROOMS
+  const favs = seededShuffle(INITIAL_ROOMS.filter((r) => r.section === 'favorites'), seed)
+  const chats = seededShuffle(INITIAL_ROOMS.filter((r) => r.section !== 'favorites'), (seed ^ 0x9e3779b9) >>> 0)
+  return [...favs, ...chats]
 }
 
 // 使用者實際操作事件 — 供 usability test 判定任務是否「真的有做對」。
@@ -1961,8 +2292,8 @@ export default function App({
   config,
   onAction,
 }: { config?: ChatVariantConfig; onAction?: (a: ChatAction) => void } = {}) {
-  const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS)
-  const [activeId, setActiveId] = useState<string>(INITIAL_ROOMS[0].id)
+  const [rooms, setRooms] = useState<Room[]>(() => orderedRooms(config?.roomOrderSeed))
+  const [activeId, setActiveId] = useState<string>(() => orderedRooms(config?.roomOrderSeed)[0].id)
   const [listOpen, setListOpen] = useState(config?.initialListOpen ?? true)
   const [listWidth, setListWidth] = useState(320)
   const [showPreview, setShowPreview] = useState(config?.initialShowPreview ?? true)
@@ -1970,15 +2301,20 @@ export default function App({
   const [mutedIds, setMutedIds] = useState<Set<string>>(new Set())
   const [fullWidth, setFullWidth] = useState(config?.initialFullWidth ?? true)
   const [favOrder, setFavOrder] = useState<string[]>(
-    INITIAL_ROOMS.filter((r) => r.section === 'favorites').map((r) => r.id)
+    () => orderedRooms(config?.roomOrderSeed).filter((r) => r.section === 'favorites').map((r) => r.id)
   )
+  // The "Last read" divider only shows for the room/message captured at the
+  // moment an unread room is opened, and is cleared the instant the user
+  // navigates away — returning to the room later shows no divider.
+  const [lastReadDivider, setLastReadDivider] = useState<{ roomId: string; messageId: string } | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  // Jump-to-message from the universal search modal's "View message" button —
+  // bumping token re-triggers the one-time indigo-6 flash on the same message.
+  const [flash, setFlash] = useState<{ roomId: string; messageId: string; token: number } | null>(null)
 
   const current = rooms.find((r) => r.id === activeId) ?? rooms[0]
   const unreadCount = rooms.filter((r) => r.unread && !mutedIds.has(r.id)).length
   const groupAvatarMode = config?.groupAvatarMode ?? 'icon'
-  // 各測試版本依自身 config 打亂聊天室排序(seed = config 雜湊),讓 A/B/C 順序各異、
-  // 受測者無法靠記憶位置完成任務。base story(無 config)維持原順序、不受影響。
-  const orderedRooms = config ? seededShuffle(rooms, hashString(JSON.stringify(config))) : rooms
 
   function handleToggleMute(id: string) {
     const willMute = !mutedIds.has(id)
@@ -1994,9 +2330,31 @@ export default function App({
   }
 
   function handleSelectRoom(id: string) {
-    setActiveId(id)
+    if (id === activeId) return
     const r = rooms.find((x) => x.id === id)
     if (r) onAction?.({ type: 'open-room', roomId: r.id, roomTitle: r.title, unread: !!r.unread })
+    if (r?.unread) {
+      const lastMsg = r.messages[r.messages.length - 1]
+      setLastReadDivider(lastMsg ? { roomId: id, messageId: lastMsg.id } : null)
+      setRooms((prev) => prev.map((x) => (x.id === id ? { ...x, unread: false } : x)))
+    } else {
+      setLastReadDivider(null)
+    }
+    setActiveId(id)
+  }
+
+  // People/Chatroom search tabs — jump straight to the room, no preview/flash.
+  function handleSearchNavigateRoom(roomId: string) {
+    if (roomId !== activeId) handleSelectRoom(roomId)
+    setSearchOpen(false)
+  }
+
+  // Message tab's "View message" — closes the modal, opens the room (if needed),
+  // and flashes the target bubble in the real conversation view.
+  function handleSearchViewMessage(roomId: string, messageId: string) {
+    if (roomId !== activeId) handleSelectRoom(roomId)
+    setFlash({ roomId, messageId, token: Date.now() })
+    setSearchOpen(false)
   }
 
   function handleToggleFavorite(id: string) {
@@ -2040,7 +2398,7 @@ export default function App({
         <NavRail unreadCount={unreadCount} onOpenSettings={() => { setSettingsOpen(true); onAction?.({ type: 'open-settings' }) }} />
         {listOpen && (
           <ChatList
-            rooms={orderedRooms}
+            rooms={rooms}
             activeId={activeId}
             onSelect={handleSelectRoom}
             onCollapse={() => setListOpen(false)}
@@ -2052,6 +2410,7 @@ export default function App({
             onToggleMute={handleToggleMute}
             onToggleFavorite={handleToggleFavorite}
             groupAvatarMode={groupAvatarMode}
+            onSearch={() => setSearchOpen(true)}
           />
         )}
         <Conversation
@@ -2066,6 +2425,9 @@ export default function App({
           onThreadSend={handleThreadSend}
           onAction={onAction}
           groupAvatarMode={groupAvatarMode}
+          lastReadMessageId={lastReadDivider?.roomId === current.id ? lastReadDivider.messageId : null}
+          flashMessageId={flash?.roomId === current.id ? flash.messageId : null}
+          flashToken={flash?.roomId === current.id ? flash.token : undefined}
         />
       </div>
       <SettingsModal
@@ -2074,6 +2436,14 @@ export default function App({
         showPreview={showPreview}
         onConfirm={(v) => { setShowPreview(v); onAction?.({ type: 'toggle-preview', value: v }) }}
       />
+      {searchOpen && (
+        <SearchModal
+          rooms={rooms}
+          onClose={() => setSearchOpen(false)}
+          onNavigateRoom={handleSearchNavigateRoom}
+          onViewMessage={handleSearchViewMessage}
+        />
+      )}
     </TooltipProvider>
   )
 }
