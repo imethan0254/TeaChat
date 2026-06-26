@@ -113,9 +113,10 @@ const chatListPreviewProject: UTProject<ChatAction> = {
     },
   ],
   variants: {
-    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true }),
-    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false }),
-    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial' }),
+    // roomOrderSeed 各版不同 → A/B/C 聊天室排序各異,受測者無法靠記憶位置完成任務。
+    A: chatVariant({ zh: '版本 A:列表顯示訊息預覽', en: 'Version A: list shows message preview' }, { initialShowPreview: true, roomOrderSeed: 1 }),
+    B: chatVariant({ zh: '版本 B:精簡列表(不顯示訊息預覽)', en: 'Version B: compact list (no message preview)' }, { initialShowPreview: false, roomOrderSeed: 2 }),
+    C: chatVariant({ zh: '版本 C:精簡列表 + 多人聊天室字母頭像', en: 'Version C: compact list + initial avatars for group chats' }, { initialShowPreview: false, groupAvatarMode: 'initial', roomOrderSeed: 3 }),
   },
 }
 
