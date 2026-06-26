@@ -40,7 +40,7 @@ const messageWidthProject: UTProject<ChatAction> = {
     {
       id: 't1',
       title: { zh: '找到並開啟含有寬版資料表的「IT Sales - Table格式範例」聊天室,把整張表格看過一遍。', en: "Find and open the 'IT Sales - Table format example' chat with the wide table, and look through the whole table." },
-      hint: { zh: '可使用列表上方的搜尋;進去後左右捲動瀏覽寬表格。', en: 'Use the search at the top; scroll horizontally to browse the wide table.' },
+      hint: { zh: '在左側聊天列表裡捲動尋找;進去後左右捲動瀏覽寬表格。', en: 'Scroll the chat list on the left to find it; scroll horizontally to browse the wide table.' },
       check: (acts) =>
         acts.some((a) => a.type === 'open-room' && a.roomId === 'semi-sales')
           ? { ok: true }
