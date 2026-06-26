@@ -36,6 +36,8 @@ const chatListPreviewProject: UTProject<ChatAction> = {
   ],
   postTaskSurvey: [seqQuestion, postTaskComment],
   postTestSurvey: [
+    // 預覽偏好改在最後問一次(體驗完三版後回答更準),不再每版重複。
+    { id: 'preview-pref', questionType: 'writtenResponse', prompt: { zh: '你比較喜歡聊天列表「有顯示」還是「不顯示」最新訊息預覽?為什麼?(顯示與否對你使用上的差別)', en: 'Do you prefer the chat list SHOWING or HIDING the latest-message preview? Why? (how it affects your use)' }, required: false },
     { id: 'like', questionType: 'writtenResponse', prompt: { zh: '這次體驗中你最喜歡的部分是什麼?', en: 'What did you like most about this experience?' }, required: false },
     { id: 'change', questionType: 'writtenResponse', prompt: { zh: '如果可以改一件事,你會改什麼?', en: 'If you could change one thing, what would it be?' }, required: false },
     { id: 'unexpected', questionType: 'writtenResponse', prompt: { zh: '過程中有沒有遇到任何意外或預期外的狀況?', en: 'Did anything unexpected happen during the process?' }, required: false },
@@ -43,7 +45,7 @@ const chatListPreviewProject: UTProject<ChatAction> = {
   tasks: [
     {
       id: 't1',
-      title: { zh: '用聊天列表上方的「搜尋」,找到並開啟「IT Sales - Table格式範例」這個聊天室。', en: "Use the search at the top of the chat list to find and open the 'IT Sales - Table format example' chat." },
+      title: { zh: '用「搜尋」功能,找到並開啟「IT Sales - Table格式範例」這個聊天室。', en: "Use search to find and open the 'IT Sales - Table format example' chat." },
       check: (acts) =>
         acts.some((a) => a.type === 'open-room' && a.roomId === 'semi-sales')
           ? { ok: true }
@@ -86,30 +88,6 @@ const chatListPreviewProject: UTProject<ChatAction> = {
         if (!opened) return { ok: false, reason: { zh: '未開啟任何討論串(Thread)', en: 'Did not open any thread' } }
         return { ok: false, reason: { zh: '已開啟討論串但未送出回覆', en: 'Opened a thread but did not send a reply' } }
       },
-    },
-    {
-      id: 't5',
-      title: {
-        zh: '找到可以開關「聊天列表顯示最新訊息預覽(Show message previews for chats)」的設定,把它調成你個人比較喜歡的狀態。',
-        en: 'Find the setting that toggles "Show message previews for chats" and set it to whatever you personally prefer.',
-      },
-      check: (acts) =>
-        acts.some((a) => a.type === 'open-settings' || a.type === 'toggle-preview')
-          ? { ok: true }
-          : { ok: false, reason: { zh: '未找到 / 未開啟「顯示訊息預覽」的設定', en: 'Did not find / open the "Show message previews" setting' } },
-      // 偏好與原因改用「文字填答」收集(不依賴錄音/逐字稿,人人可填)。
-      postTask: [
-        {
-          id: 't5-pref',
-          questionType: 'writtenResponse',
-          prompt: {
-            zh: '你比較喜歡「有顯示」還是「不顯示」最新訊息預覽?為什麼?(顯示與否對你使用上的差別)',
-            en: 'Do you prefer SHOWING or HIDING the latest-message preview? Why? (how it affects your use)',
-          },
-          required: false,
-        },
-        postTaskComment,
-      ],
     },
   ],
   variants: {
