@@ -11,7 +11,7 @@
 import type { SubmitConfig } from '@imethan0254/ut-model-a'
 
 const SUPABASE_URL = 'https://qjaedugymiezllhhtbgs.supabase.co' // 例:'https://abcdefgh.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGci...(eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqYWVkdWd5bWllemxsaGh0YmdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0ODI4MzgsImV4cCI6MjA5ODA1ODgzOH0.Ct5uSrQu8MKvhUobY1kC3r5vvWSQAHRIaYLzfk5p46o)' // anon public key(配表上 RLS insert-only)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqYWVkdWd5bWllemxsaGh0YmdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0ODI4MzgsImV4cCI6MjA5ODA1ODgzOH0.Ct5uSrQu8MKvhUobY1kC3r5vvWSQAHRIaYLzfk5p46o' // anon public key(配表上 RLS insert-only)
 
 export const utSubmit: SubmitConfig | undefined =
   SUPABASE_URL && SUPABASE_ANON_KEY
