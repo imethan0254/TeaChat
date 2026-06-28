@@ -41,7 +41,10 @@ const CHROME = {
     micNote: '開始後會請求麥克風權限,用於自動把你的「放聲思考」轉成逐字稿(可拒絕,拒絕則不錄音)。',
     envCaveat: '注意:特定環境(部分瀏覽器 / 裝置 / 權限或網路設定)可能無法使用畫面錄製或錄音功能。',
     recNote: '開始後會請你分享畫面以錄製測試過程(畫面 + 你的講話聲),結束自動下載。',
-    nameLabel: '請輸入你的工號與姓名', namePlaceholder: '例如:123321王小明', startBtn: '確認並開始測試',
+    nameLabel: '請輸入你的姓名', namePlaceholder: '例如:王小明',
+    emailLabel: '公司 email', emailPlaceholder: '例如:xioming@abc.com',
+    consent: '你的測試結果(含填答與操作紀錄)將回傳供研究分析。',
+    startBtn: '確認並開始測試',
     noteSingle: (n: number) => <>本次共 <b>{n}</b> 項任務,進行中右下角會出現任務指示框。<b>必須實際完成</b>指定操作才算成功。</>,
     noteCombined: (k: number, label: string, n: number) => <>你會<b>依序體驗 {k} 個版本({label})</b>,每版各 <b>{n}</b> 項任務。全部完成後會看到各版比較與綜合結論。</>,
     badgeSingle: (v: string) => `Usability Test · 版本 ${v}`,
@@ -118,7 +121,10 @@ const CHROME = {
     micNote: 'You will be asked for microphone access, used to auto-transcribe your think-aloud (you may decline; declining means no recording).',
     envCaveat: 'Note: some environments (certain browsers / devices / permission or network settings) may not support screen or audio recording.',
     recNote: 'You will be asked to share your screen to record the session (screen + your voice); it downloads automatically when you finish.',
-    nameLabel: 'Enter your employee ID and name', namePlaceholder: 'e.g. 123321 John Doe', startBtn: 'Confirm & start',
+    nameLabel: 'Enter your name', namePlaceholder: 'e.g. Wang Xiaoming',
+    emailLabel: 'Company email', emailPlaceholder: 'e.g. xioming@abc.com',
+    consent: 'Your results (answers and interaction logs) will be sent back for research analysis.',
+    startBtn: 'Confirm & start',
     noteSingle: (n: number) => <>This test has <b>{n}</b> task(s). A task panel appears at the bottom-right while testing. You <b>must actually complete</b> the action for it to count as success.</>,
     noteCombined: (k: number, label: string, n: number) => <>You will <b>go through {k} versions in order ({label})</b>, <b>{n}</b> task(s) each. After all are done you'll see a per-version comparison and overall conclusion.</>,
     badgeSingle: (v: string) => `Usability Test · Version ${v}`,
@@ -942,7 +948,7 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
 
 // ── intro 畫面 ──────────────────────────────────────────────────────────────
 function IntroScreen({
-  project, badge, note, record, estimatedMinutes, tester, lang, onLangChange, onTesterChange, onStart,
+  project, badge, note, record, estimatedMinutes, tester, email, lang, onLangChange, onTesterChange, onEmailChange, onStart,
 }: {
   project: UTProject<any>
   badge: string
@@ -950,12 +956,15 @@ function IntroScreen({
   record: boolean
   estimatedMinutes: number
   tester: string
+  email: string
   lang: Lang
   onLangChange: (l: Lang) => void
   onTesterChange: (s: string) => void
+  onEmailChange: (s: string) => void
   onStart: () => void
 }) {
   const t = tr(lang)
+  const canStart = tester.trim().length > 0 && email.trim().length > 0
   return (
     <CenterScroll>
       <div className="w-full max-w-[560px] rounded-xl border border-neutral-5 bg-surface p-8 shadow-lg">
@@ -1007,9 +1016,22 @@ function IntroScreen({
         <Input
           className="mt-1.5" placeholder={t.namePlaceholder} value={tester}
           onChange={(e) => onTesterChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onStart() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && canStart) onStart() }}
         />
-        <Button variant="primary" className="mt-5 w-full" disabled={!tester.trim()} onClick={onStart}>
+
+        <label className="mt-4 block" style={{ fontSize: 13, fontWeight: 600 }}>{t.emailLabel}</label>
+        <Input
+          className="mt-1.5" type="email" placeholder={t.emailPlaceholder} value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && canStart) onStart() }}
+        />
+
+        <div className="mt-4 flex items-start gap-2">
+          <Info size={16} className="mt-0.5 shrink-0 text-neutral-6" />
+          <p className="text-neutral-6" style={{ fontSize: 12, lineHeight: '150%' }}>{t.consent}</p>
+        </div>
+
+        <Button variant="primary" className="mt-4 w-full" disabled={!canStart} onClick={onStart}>
           {t.startBtn}
         </Button>
       </div>
@@ -1223,7 +1245,7 @@ function SurveySection({ heading, taskSurveys, postTestAnswers }: { heading: str
 }
 
 // ── 單版本結果頁 ─────────────────────────────────────────────────────────────
-function SingleResultScreen({ project, run, tester, postTestAnswers, recording, recordingBlob, submit, onReset }: { project: UTProject<any>; run: VariantRun; tester: string; postTestAnswers: SurveyAnswer[]; recording: boolean; recordingBlob: Blob | null; submit?: SubmitConfig; onReset: () => void }) {
+function SingleResultScreen({ project, run, tester, email, postTestAnswers, recording, recordingBlob, submit, onReset }: { project: UTProject<any>; run: VariantRun; tester: string; email: string; postTestAnswers: SurveyAnswer[]; recording: boolean; recordingBlob: Blob | null; submit?: SubmitConfig; onReset: () => void }) {
   const lang = useLang()
   const t = tr(lang)
   const feLines = falseEasyExportLines([run], t)
@@ -1231,6 +1253,7 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
     const rows: (string | number)[][] = [
       [t.xName, L(project.title, lang)],
       [t.xTester, tester || '—'],
+      [t.emailLabel, email || '—'],
       [t.xVersion, `${run.variant}(${run.variantLabel})`],
       [t.xDate, fmtDateTime(run.startedAt)],
       [t.xDurationMin, durationMin(run.startedAt, run.finishedAt)],
@@ -1250,6 +1273,7 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
     const lines = [
       `${t.xName}:${L(project.title, lang)}`,
       `${t.xTester}:${tester || '—'}`,
+      `${t.emailLabel}:${email || '—'}`,
       `${t.xVersion}:${run.variant}(${run.variantLabel})`,
       `${t.xDate}:${fmtDateTime(run.startedAt)}`,
       `${t.duration}:${t.durationVal(durationMin(run.startedAt, run.finishedAt))}`,
@@ -1270,6 +1294,7 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
     test_id: project.id, kind: 'single', variants: run.variant, tester: tester || '', lang,
     started_at: run.startedAt.toISOString(), finished_at: run.finishedAt.toISOString(),
     result: {
+      email,
       rate: run.rate, successCount: run.successCount, total: run.total,
       outcomes: run.outcomes, transcript: run.transcript,
       taskSurveys: run.taskSurveys, postTest: postTestAnswers,
@@ -1293,6 +1318,7 @@ function SingleResultScreen({ project, run, tester, postTestAnswers, recording, 
 
       <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-neutral-8" style={{ fontSize: 13 }}>
         <div><span className="text-neutral-6">{t.tester}:</span> <b>{tester || '—'}</b></div>
+        <div><span className="text-neutral-6">{t.emailLabel}:</span> {email || '—'}</div>
         <div><span className="text-neutral-6">{t.version}:</span> {run.variant}({run.variantLabel})</div>
         <div><span className="text-neutral-6">{t.date}:</span> {fmtDateTime(run.startedAt)}</div>
         <div><span className="text-neutral-6">{t.duration}:</span> {t.durationVal(durationMin(run.startedAt, run.finishedAt))}</div>
@@ -1332,7 +1358,7 @@ function thinkAloudNote(runs: VariantRun[], t: Chrome) {
   }).join(' / ') + '。'
 }
 
-function CombinedResultScreen({ project, runs, tester, postTestAnswers, recording, recordingBlob, submit, onReset }: { project: UTProject<any>; runs: VariantRun[]; tester: string; postTestAnswers: SurveyAnswer[]; recording: boolean; recordingBlob: Blob | null; submit?: SubmitConfig; onReset: () => void }) {
+function CombinedResultScreen({ project, runs, tester, email, postTestAnswers, recording, recordingBlob, submit, onReset }: { project: UTProject<any>; runs: VariantRun[]; tester: string; email: string; postTestAnswers: SurveyAnswer[]; recording: boolean; recordingBlob: Blob | null; submit?: SubmitConfig; onReset: () => void }) {
   const lang = useLang()
   const t = tr(lang)
   const conclusion = concludeMulti(runs, t)
@@ -1355,6 +1381,7 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
     const rows: (string | number)[][] = [
       [t.xName, L(project.title, lang)],
       [t.xTester, tester || '—'],
+      [t.emailLabel, email || '—'],
       [t.xDate, fmtDateTime(runs[0].startedAt)],
       [],
       ...runs.map((r) => [`${t.version} ${r.variant} ${t.xRate}`, `${r.rate}% (${r.successCount}/${r.total})`]),
@@ -1378,6 +1405,7 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
     const lines = [
       `${t.xName}:${L(project.title, lang)}`,
       `${t.xTester}:${tester || '—'}`,
+      `${t.emailLabel}:${email || '—'}`,
       `${t.xDate}:${fmtDateTime(runs[0].startedAt)}`,
       '',
       ...runs.map((r) => t.xRateOf(r.variant, r.variantLabel, r.rate, r.successCount, r.total)),
@@ -1421,7 +1449,7 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
     test_id: project.id, kind: 'combined', variants: runs.map((r) => r.variant).join(','), tester: tester || '', lang,
     started_at: runs[0].startedAt.toISOString(), finished_at: runs[runs.length - 1].finishedAt.toISOString(),
     result: {
-      conclusion, thinkAloud: taNote,
+      email: email || '', conclusion, thinkAloud: taNote,
       runs: runs.map((r) => ({
         variant: r.variant, variantLabel: r.variantLabel, rate: r.rate, successCount: r.successCount, total: r.total,
         outcomes: r.outcomes, transcript: r.transcript, taskSurveys: r.taskSurveys, falseEasy: falseEasyItems(r),
@@ -1437,6 +1465,7 @@ function CombinedResultScreen({ project, runs, tester, postTestAnswers, recordin
       <h1 className="text-neutral-9" style={{ fontSize: 22, fontWeight: 600, lineHeight: '130%' }}>{L(project.title, lang)}</h1>
       <div className="mt-2 text-neutral-8" style={{ fontSize: 13 }}>
         <span className="text-neutral-6">{t.tester}:</span> <b>{tester || '—'}</b>
+        <span className="ml-4 text-neutral-6">{t.emailLabel}:</span> {email || '—'}
         <span className="ml-4 text-neutral-6">{t.date}:</span> {fmtDateTime(runs[0].startedAt)}
       </div>
 
@@ -1475,6 +1504,7 @@ export function UsabilityTest<A>({ project, variant, password, record = false, d
   const [unlocked, setUnlocked] = useState(!password)
   const [phase, setPhase] = useState<'intro' | 'running' | 'posttest' | 'done'>('intro')
   const [tester, setTester] = useState('')
+  const [email, setEmail] = useState('')
   const [run, setRun] = useState<VariantRun | null>(null)
   const [postTest, setPostTest] = useState<SurveyAnswer[]>([])
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null)
@@ -1496,10 +1526,12 @@ export function UsabilityTest<A>({ project, variant, password, record = false, d
         record={record}
         estimatedMinutes={estimatedMinutes}
         tester={tester}
+        email={email}
         lang={lang}
         onLangChange={setLang}
         onTesterChange={setTester}
-        onStart={() => { if (tester.trim()) { if (record) rec.start(); setPhase('running') } }}
+        onEmailChange={setEmail}
+        onStart={() => { if (tester.trim() && email.trim()) { if (record) rec.start(); setPhase('running') } }}
       />
     )
   } else if (phase === 'running') {
@@ -1507,7 +1539,7 @@ export function UsabilityTest<A>({ project, variant, password, record = false, d
   } else if (phase === 'posttest') {
     content = <SurveyStep badge={t.postTestBadge} title={t.postTestTitle} questions={postTestQs} submitLabel={t.postTestSubmit} onSubmit={(a) => { setPostTest(a); setPhase('done') }} />
   } else {
-    content = <SingleResultScreen project={project} run={run!} tester={tester} postTestAnswers={postTest} recording={record && rec.started} recordingBlob={recordingBlob} submit={submit} onReset={() => { setPhase('intro'); setTester(''); setRun(null); setPostTest([]); setRecordingBlob(null) }} />
+    content = <SingleResultScreen project={project} run={run!} tester={tester} email={email} postTestAnswers={postTest} recording={record && rec.started} recordingBlob={recordingBlob} submit={submit} onReset={() => { setPhase('intro'); setTester(''); setEmail(''); setRun(null); setPostTest([]); setRecordingBlob(null) }} />
   }
   return <LangCtx.Provider value={lang}>{content}</LangCtx.Provider>
 }
@@ -1518,6 +1550,7 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password, reco
   const [unlocked, setUnlocked] = useState(!password)
   const [phase, setPhase] = useState<'intro' | 'run' | 'interstitial' | 'posttest' | 'done'>('intro')
   const [tester, setTester] = useState('')
+  const [email, setEmail] = useState('')
   const [vIndex, setVIndex] = useState(0)
   const [runs, setRuns] = useState<VariantRun[]>([])
   const [postTest, setPostTest] = useState<SurveyAnswer[]>([])
@@ -1526,7 +1559,7 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password, reco
   const rec = useScreenRecorder()
   const t = tr(lang)
 
-  function reset() { setPhase('intro'); setTester(''); setVIndex(0); setRuns([]); setPostTest([]); setRecordingBlob(null) }
+  function reset() { setPhase('intro'); setTester(''); setEmail(''); setVIndex(0); setRuns([]); setPostTest([]); setRecordingBlob(null) }
   const orderLabel = order.map((v) => `${t.version} ${v}`).join(' → ')
 
   useEffect(() => { if (phase === 'done') rec.stop().then(setRecordingBlob) }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1543,10 +1576,12 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password, reco
         record={record}
         estimatedMinutes={estimatedMinutes}
         tester={tester}
+        email={email}
         lang={lang}
         onLangChange={setLang}
         onTesterChange={setTester}
-        onStart={() => { if (tester.trim()) { if (record) rec.start(); setPhase('run') } }}
+        onEmailChange={setEmail}
+        onStart={() => { if (tester.trim() && email.trim()) { if (record) rec.start(); setPhase('run') } }}
       />
     )
   } else if (phase === 'run') {
@@ -1581,7 +1616,7 @@ export function UsabilityTestAB<A>({ project, order = ['A', 'B'], password, reco
   } else if (phase === 'posttest') {
     content = <SurveyStep badge={t.postTestBadge} title={t.postTestTitle} questions={postTestQs} submitLabel={t.postTestSubmit} onSubmit={(a) => { setPostTest(a); setPhase('done') }} />
   } else {
-    content = <CombinedResultScreen project={project} runs={runs} tester={tester} postTestAnswers={postTest} recording={record && rec.started} recordingBlob={recordingBlob} submit={submit} onReset={reset} />
+    content = <CombinedResultScreen project={project} runs={runs} tester={tester} email={email} postTestAnswers={postTest} recording={record && rec.started} recordingBlob={recordingBlob} submit={submit} onReset={reset} />
   }
   return <LangCtx.Provider value={lang}>{content}</LangCtx.Provider>
 }
