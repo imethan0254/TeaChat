@@ -57,7 +57,7 @@ const CHROME = {
     // floating status
     recording: '錄音中', notRecording: '未錄音', unsupported: '不支援',
     // survey
-    postTaskBadge: (n: number) => `任務 ${n} 後問卷`, postTaskTitle: '完成了!請回答幾個問題', postTaskSubmit: '送出,繼續',
+    postTaskBadge: (n: number) => `任務 ${n} 後問卷`, postTaskTitle: '完成了!請回答幾個問題', postTaskSubmit: '送出,繼續', backToTask: '尚未完成?返回任務繼續操作',
     postTestBadge: '測試結束問卷', postTestTitle: '最後幾個整體問題', postTestSubmit: '送出並查看結果',
     submit: '送出', anchorMin: '非常困難', anchorMax: '非常容易', writePlaceholder: '請輸入你的想法…',
     charOk: (n: number) => `已達最低字數(${n} 字)`, charNeed: (min: number, diff: number) => `至少 ${min} 字,還差 ${diff} 字`,
@@ -134,7 +134,7 @@ const CHROME = {
     taskTitle: 'Task', taskHintDefault: 'Finish the action above, then press the button below; not actually completing it is recorded as "fail".',
     finishSee: 'Finish & see results', doneNext: 'Done, next', expand: 'Expand', collapse: 'Collapse',
     recording: 'Recording', notRecording: 'Not recording', unsupported: 'Unsupported',
-    postTaskBadge: (n: number) => `Post-task ${n} survey`, postTaskTitle: 'Done! A few quick questions', postTaskSubmit: 'Submit & continue',
+    postTaskBadge: (n: number) => `Post-task ${n} survey`, postTaskTitle: 'Done! A few quick questions', postTaskSubmit: 'Submit & continue', backToTask: 'Not done yet? Back to the task',
     postTestBadge: 'Post-test survey', postTestTitle: 'A few final questions', postTestSubmit: 'Submit & see results',
     submit: 'Submit', anchorMin: 'Very difficult', anchorMax: 'Very easy', writePlaceholder: 'Type your thoughts…',
     charOk: (n: number) => `Minimum reached (${n} chars)`, charNeed: (min: number, diff: number) => `At least ${min} chars, ${diff} more to go`,
@@ -723,7 +723,7 @@ function isAnswerValid(q: SurveyQuestion, value: number | string | undefined): b
 }
 
 function SurveyStep({
-  badge, title, questions, submitLabel, presentation = 'screen', onSubmit,
+  badge, title, questions, submitLabel, presentation = 'screen', onSubmit, onBack, backLabel,
 }: {
   badge: string
   title: string
@@ -731,6 +731,8 @@ function SurveyStep({
   submitLabel?: string
   presentation?: 'screen' | 'overlay'
   onSubmit: (answers: SurveyAnswer[]) => void
+  onBack?: () => void
+  backLabel?: string
 }) {
   const lang = useLang()
   const t = tr(lang)
@@ -758,6 +760,9 @@ function SurveyStep({
         ))}
       </div>
       <Button variant="primary" className="mt-6 w-full" disabled={!valid} onClick={submit}>{submitLabel ?? t.submit}</Button>
+      {onBack && (
+        <Button variant="ghost" className="mt-2 w-full" onClick={onBack}>{backLabel ?? t.backToTask}</Button>
+      )}
     </div>
   )
 
@@ -795,6 +800,7 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
   const v = project.variants[variant]
   const actionsRef = useRef<A[]>([])
   const taskStartRef = useRef(0)
+  const prevTaskStartRef = useRef(0)
   const outcomesRef = useRef<TaskOutcome[]>([])
   const surveysRef = useRef<{ taskId: string; taskTitle: string; answers: SurveyAnswer[] }[]>([])
   const startedRef = useRef<Date>(new Date())
@@ -830,7 +836,8 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
 
   function complete() {
     const task = project.tasks[index]
-    const slice = actionsRef.current.slice(taskStartRef.current)
+    const sliceStart = taskStartRef.current
+    const slice = actionsRef.current.slice(sliceStart)
     const { ok, reason } = task.check(slice)
     outcomesRef.current.push({
       id: task.id,
@@ -838,6 +845,7 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
       result: ok ? 'success' : 'fail',
       reason: ok ? undefined : (L(reason, lang) || (lang === 'en' ? 'Did not complete the required action' : '未實際完成任務指定的操作')),
     })
+    prevTaskStartRef.current = sliceStart
     taskStartRef.current = actionsRef.current.length
 
     if (postTaskQuestionsFor(project, task).length > 0) {
@@ -845,6 +853,13 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
       return
     }
     advanceOrFinish()
+  }
+
+  // 誤觸「完成」時:撤銷剛記下的這筆任務結果,還原操作起點,回到任務繼續做。
+  function backToTask() {
+    outcomesRef.current.pop()
+    taskStartRef.current = prevTaskStartRef.current
+    setSurveyIdx(null)
   }
 
   function onSurveySubmit(answers: SurveyAnswer[]) {
@@ -870,6 +885,8 @@ function RunPhase<A>({ project, variant, onDone }: { project: UTProject<A>; vari
           submitLabel={t.postTaskSubmit}
           presentation="overlay"
           onSubmit={onSurveySubmit}
+          onBack={backToTask}
+          backLabel={t.backToTask}
         />
       )}
     </div>
