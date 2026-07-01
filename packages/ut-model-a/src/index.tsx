@@ -13,7 +13,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { Button, Input, Textarea, ProgressBar } from '@qijenchen/design-system'
 import {
   ClipboardList, Target, Info, FileSpreadsheet, ClipboardCopy, RotateCcw, Check, ArrowRight,
-  GripVertical, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, Lock, AlertTriangle, Languages, Clock,
+  GripVertical, Move, ChevronDown, ChevronUp, CheckCircle2, XCircle, Mic, Lock, AlertTriangle, Languages, Clock,
 } from 'lucide-react'
 
 // ── i18n:語言 + 可在地化字串 ───────────────────────────────────────────────
@@ -53,6 +53,7 @@ const CHROME = {
     estTime: (m: number) => `預計作答時間約 ${m} 分鐘`,
     // task panel
     taskTitle: '任務指示', taskHintDefault: '完成上述操作後再按下方按鈕;未實際完成會記為「失敗」。',
+    dragHint: '視窗擋到操作畫面?按住這個圖示,用滑鼠拖曳就能移動這個任務指示視窗。', dragHintGot: '知道了',
     finishSee: '完成並查看結果', doneNext: '完成,下一步', expand: '展開', collapse: '收合',
     // floating status
     recording: '錄音中', notRecording: '未錄音', unsupported: '不支援',
@@ -132,6 +133,7 @@ const CHROME = {
     version: 'Version',
     estTime: (m: number) => `Estimated time: about ${m} minutes`,
     taskTitle: 'Task', taskHintDefault: 'Finish the action above, then press the button below; not actually completing it is recorded as "fail".',
+    dragHint: 'Panel blocking the screen? Press and hold this icon and drag with your mouse to move this task panel.', dragHintGot: 'Got it',
     finishSee: 'Finish & see results', doneNext: 'Done, next', expand: 'Expand', collapse: 'Collapse',
     recording: 'Recording', notRecording: 'Not recording', unsupported: 'Unsupported',
     postTaskBadge: (n: number) => `Post-task ${n} survey`, postTaskTitle: 'Done! A few quick questions', postTaskSubmit: 'Submit & continue', backToTask: 'Not done yet? Back to the task',
@@ -604,6 +606,14 @@ function TaskPanel({
   const t = tr(lang)
   const [collapsed, setCollapsed] = useState(false)
   const { style, handlers } = useDraggable({ right: 24, bottom: 24 })
+  // 拖曳新手引導:每個瀏覽器只出現一次(拖過或按「知道了」後不再顯示)。
+  const [showHint, setShowHint] = useState(() => {
+    try { return localStorage.getItem('ut-drag-hint-seen') !== '1' } catch { return true }
+  })
+  function dismissHint() {
+    setShowHint(false)
+    try { localStorage.setItem('ut-drag-hint-seen', '1') } catch { /* ignore */ }
+  }
 
   const total = tasks.length
   const current = tasks[index]
@@ -612,10 +622,17 @@ function TaskPanel({
   return (
     <div data-draggable className="fixed z-[1000] w-[320px] rounded-xl border border-neutral-5 bg-surface shadow-lg" style={style}>
       <div
-        className="flex cursor-grab items-center gap-2 border-b border-neutral-4 px-3 py-2 active:cursor-grabbing"
+        className="relative flex cursor-grab items-center gap-2 border-b border-neutral-4 px-3 py-2 active:cursor-grabbing"
         {...handlers}
+        onPointerDown={(e) => { dismissHint(); handlers.onPointerDown(e) }}
       >
-        <GripVertical size={14} className="text-neutral-6" />
+        <span
+          className={`flex h-6 w-6 items-center justify-center rounded-md ${showHint ? 'animate-pulse' : ''}`}
+          style={showHint ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : undefined}
+          aria-label={t.dragHint}
+        >
+          <Move size={15} className={showHint ? '' : 'text-neutral-6'} />
+        </span>
         <ClipboardList size={16} className="text-primary" />
         <span style={{ fontSize: 13, fontWeight: 600 }} className="text-neutral-9">{t.taskTitle}</span>
         <Chip className="ml-auto">{Math.min(index + 1, total)} / {total}</Chip>
@@ -627,6 +644,27 @@ function TaskPanel({
           className="!h-6 !w-6 !min-w-0 !p-0"
         />
       </div>
+
+      {showHint && (
+        <div
+          className="absolute left-2 top-[46px] z-[1001] w-[248px] rounded-lg p-3 shadow-lg"
+          style={{ backgroundColor: 'var(--color-neutral-9)' }}
+        >
+          <div
+            className="absolute -top-1.5 left-4 h-3 w-3 rotate-45"
+            style={{ backgroundColor: 'var(--color-neutral-9)' }}
+          />
+          <p style={{ fontSize: 12, lineHeight: '155%', color: '#fff' }}>{t.dragHint}</p>
+          <button
+            type="button"
+            onClick={dismissHint}
+            className="mt-2 rounded-md px-2.5 py-1"
+            style={{ fontSize: 12, fontWeight: 600, backgroundColor: '#fff', color: 'var(--color-neutral-9)' }}
+          >
+            {t.dragHintGot}
+          </button>
+        </div>
+      )}
 
       {!collapsed && current && (
         <div className="px-3 py-3">
