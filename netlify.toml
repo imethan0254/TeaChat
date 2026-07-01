@@ -16,7 +16,7 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# UT 結果 Dashboard 讀取層 —— server-side function 用 SUPABASE_SERVICE_ROLE_KEY 讀 ut_results
+# UT 結果 Dashboard 讀取層 —— server-side function 用 SUPABASE_SECRET_KEY 讀 ut_results
 # (個資不經 public anon key)。見 netlify/functions/ut-data.mts + docs/ut-results-dashboard.md。
 # Netlify 會 auto-detect netlify/functions,此處顯式宣告避免 fork 環境差異。
 [functions]

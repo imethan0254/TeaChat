@@ -12,9 +12,17 @@
 //   header(瀏覽器登入站台後會自動帶),雙保險避免個資 endpoint 意外裸奔。
 //
 // 需在 Netlify 設的環境變數(Site configuration → Environment variables):
-//   SUPABASE_URL               例:https://qjaedugymiezllhhtbgs.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY  Supabase → Project Settings → API → service_role(secret,勿外流)
-//   STORYBOOK_BASIC_AUTH       "user:password"(站台密碼,dashboard 沿用同一組)—— 見 basic-auth.ts
+//   SUPABASE_URL          例:https://qjaedugymiezllhhtbgs.supabase.co
+//   SUPABASE_SECRET_KEY   Supabase → Settings → API Keys → Secret key(新版 `sb_secret_...`)。
+//                         也吃舊名 SUPABASE_SERVICE_ROLE_KEY(legacy service_role JWT `eyJ...`)。
+//                         兩者皆 bypass RLS、皆為 secret,只可放後端 env,絕不進前端 / repo。
+//   STORYBOOK_BASIC_AUTH  "user:password"(站台密碼,dashboard 沿用同一組)—— 見 basic-auth.ts
+//
+// ⚠️ header 差異(2026 Supabase 新 key 制):
+//   - 新版 secret key(sb_secret_…)只放 `apikey` header;若又放 Authorization: Bearer,
+//     平台會把它當 JWT 解析 → 回 "Invalid JWT" 拒絕。
+//   - legacy service_role(eyJ… JWT)需放 Authorization: Bearer 才 bypass RLS。
+//   下面依 key 形態自動切,兩種都相容。
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -47,22 +55,26 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const url = (process.env.SUPABASE_URL ?? '').replace(/\/$/, '')
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   if (!url || !key) {
     return json(
       {
         error: 'missing_config',
-        message: '請在 Netlify 設定環境變數 SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY。',
+        message: '請在 Netlify 設定環境變數 SUPABASE_URL 與 SUPABASE_SECRET_KEY(新版 secret key,或 legacy SUPABASE_SERVICE_ROLE_KEY)。',
       },
       500,
     )
   }
 
+  // 新版 secret key(sb_secret_…)= apikey only;legacy service_role JWT(eyJ…)需 Authorization: Bearer。
+  const isLegacyJwt = key.startsWith('eyJ')
+  const supaHeaders: Record<string, string> = isLegacyJwt
+    ? { apikey: key, Authorization: `Bearer ${key}` }
+    : { apikey: key }
+
   const endpoint = `${url}/rest/v1/ut_results?select=*&order=created_at.desc`
   try {
-    const res = await fetch(endpoint, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-    })
+    const res = await fetch(endpoint, { headers: supaHeaders })
     if (!res.ok) {
       const detail = (await res.text()).slice(0, 500)
       return json({ error: 'supabase_error', message: `Supabase 回應 ${res.status}`, detail }, 502)
