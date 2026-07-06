@@ -1948,7 +1948,9 @@ function SearchResultsColumn({
   onPickMessage: (roomId: string, messageId: string) => void
 }) {
   const peopleResults = q ? rooms.filter((r) => r.type === 'dm' && r.person && r.person.name.toLowerCase().includes(q)) : []
-  const chatroomResults = q ? rooms.filter((r) => r.title.toLowerCase().includes(q)) : []
+  // Chatroom tab 只收 group chatroom(含 Teams 匯入房)— DM 屬「人」,歸 People tab,
+  // 不重複出現在 Chatroom tab(2026-07-06 user 指定)
+  const chatroomResults = q ? rooms.filter((r) => r.type !== 'dm' && r.title.toLowerCase().includes(q)) : []
   const messageResults = q
     ? rooms.flatMap((r) => r.messages.filter((m) => m.text.toLowerCase().includes(q)).map((m) => ({ room: r, message: m })))
     : []
@@ -1994,11 +1996,11 @@ function SearchResultsColumn({
             onClick={() => onNavigateRoom(r.id)}
             className={`${SEARCH_ROW_CLASS} items-center`}
           >
-            {r.origin === 'teams' ? <TeamsAvatar size={32} /> : r.type === 'dm' && r.person ? <PersonAvatar person={r.person} size={32} /> : <GroupAvatar size={32} />}
+            {r.origin === 'teams' ? <TeamsAvatar size={32} /> : <GroupAvatar size={32} />}
             <div className="min-w-0 flex-1">
               <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.title}</div>
               <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>
-                {r.type === 'dm' ? 'Direct message' : `${r.memberKeys?.length ?? 0} members`}
+                {`${r.memberKeys?.length ?? 0} members`}
               </div>
             </div>
           </button>
