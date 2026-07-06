@@ -19,5 +19,6 @@ type Story = StoryObj<typeof App>
 
 export const Default: Story = {
   name: 'Teams 整合預設',
-  render: () => <App config={{ chrome: 'top-search', includeTeamsRooms: true }} />,
+  // initialShowPreview: false — chat message preview 預設 OFF(2026-07-06 user 指定)
+  render: () => <App config={{ chrome: 'top-search', includeTeamsRooms: true, initialShowPreview: false }} />,
 }

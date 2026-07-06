@@ -789,28 +789,52 @@ function NavRail({ unreadCount, onOpenSettings }: { unreadCount: number; onOpenS
 
 // ════════════════════════════════════════════════════════════════════════════
 // 1a. Top search bar(chrome='top-search',Teams 整合 prototype)
-// NavRail 移除後的頂部 chrome:logo 靠左、universal search 置中(點擊開啟既有
-// SearchModal,對齊 Teams / Slack top-bar search),NavRail 原有的 More
-// DropdownMenu + 我的頭像移到最右(由右至左:PersonAvatar → DropdownMenu)。
+// NavRail 移除後的頂部 chrome:universal search 置中(controlled input),
+// NavRail 原有的 More DropdownMenu + 我的頭像移到最右(由右至左:PersonAvatar
+// → DropdownMenu)。左欄留空(logo 已移除,2026-07-06),1fr 佔位維持置中。
+// - Focus 且無關鍵字 → input 正下方浮出提示 panel(原 SearchModal empty state;
+//   panel 內的 search bar 那排已移除,輸入都在頂部這個 input 完成)
+// - 有關鍵字 → App 把 Conversation view 整個換成 SearchPageView(頁面一部分,非浮窗)
 // grid-cols-[1fr_auto_1fr] 讓 search bar 永遠落在視窗正中間,不受左右內容寬度影響。
 // ════════════════════════════════════════════════════════════════════════════
-function TopSearchBar({ onOpenSettings, onSearch }: { onOpenSettings: () => void; onSearch: () => void }) {
+function TopSearchBar({
+  onOpenSettings,
+  query,
+  onQueryChange,
+}: {
+  onOpenSettings: () => void
+  query: string
+  onQueryChange: (v: string) => void
+}) {
   const moreLabelId = useId()
+  const [focused, setFocused] = useState(false)
+  const showHint = focused && query.trim() === ''
   return (
-    <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-divider bg-surface px-3" style={{ height: 48 }}>
-      <div className="flex items-center">
-        <Logo />
-      </div>
-      {/* 正中間的 universal search input — readOnly trigger,click / Enter 都開 SearchModal */}
-      <div style={{ width: 'min(480px, 40vw)' }} onClick={onSearch}>
+    // @layout-space-magic-ok: 48px = top chrome 固定高度(對齊 Microsoft Teams 48px top bar),非 layout-space 親疏 gap 語境
+    <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-divider bg-surface px-[var(--layout-space-loose)]" style={{ height: 48 }}>
+      <div />
+      {/* 正中間的 universal search input */}
+      <div className="relative" style={{ width: 'min(480px, 40vw)' }}>
         <Input
           startIcon={Search}
           placeholder="search"
-          readOnly
           aria-label="Search"
-          className="w-full cursor-pointer [&>input]:cursor-pointer"
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSearch() } }}
+          className="w-full"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') { onQueryChange(''); (e.target as HTMLInputElement).blur() } }}
+          endAction={query ? { icon: X, label: 'Clear search', onClick: () => onQueryChange('') } : undefined}
         />
+        {/* Active(focus)+ 無關鍵字 → input 正下方的提示 panel(原 search icon + 提示字串);
+            spacing 走 layout-space token、陰影走 overlay elevation token */}
+        {showHint && (
+          <div className="absolute inset-x-0 top-full z-40 mt-[var(--layout-space-tight)] flex flex-col items-center gap-[var(--layout-space-tight)] rounded-2xl border border-divider bg-surface px-[var(--layout-space-loose)] py-[var(--layout-space-loose)] text-center shadow-[var(--elevation-200)]">
+            <Search size={28} style={{ color: 'var(--color-neutral-5)' }} />
+            <p style={{ fontSize: 13, color: 'var(--color-neutral-7)' }}>Search for people, chat rooms, or messages</p>
+          </div>
+        )}
       </div>
       <div className="flex items-center justify-end gap-1">
         {/* More menu — same items as the NavRail version; aria-labelledby (not string aria-label)
@@ -1867,6 +1891,179 @@ function MessagePreviewHeader({ room, onViewMessage }: { room: Room; onViewMessa
   )
 }
 
+// 共用結果欄 — People / Chatroom / Message 三 tab + 結果列表。
+// SearchModal(浮窗)與 SearchPageView(top-search 全頁結果)共用同一份 markup,
+// 避免兩份 drift。Message 結果點擊交由 onPickMessage(caller 決定 preview 行為)。
+type SearchTab = 'people' | 'chatroom' | 'message'
+// 結果 row / tab 按鈕共用 class(單一宣告,People/Chatroom/Message 三 tab 不重複)。
+// 水平 padding 與 gap 走 layout-space token;垂直 8px 為 item-level 內距(item-anatomy 語境)。
+// @layout-space-magic-ok: py=8px 是 item-level row 內距(非 layout-space 巨觀 gap),gap/px 已走 token
+const SEARCH_ROW_CLASS = 'flex w-full gap-[var(--layout-space-tight)] px-[var(--layout-space-loose)] py-2 text-left hover:bg-neutral-hover'
+// @layout-space-magic-ok: pb-2=8px 是 tab 文字與底線 active bar 的內距(tab 元件內部微間距),px 已走 token
+const SEARCH_TAB_BTN_CLASS = 'relative px-[var(--layout-space-tight)] pb-2 capitalize'
+function SearchResultsColumn({
+  rooms,
+  q,
+  tab,
+  onTabChange,
+  previewMessageId,
+  onNavigateRoom,
+  onPickMessage,
+}: {
+  rooms: Room[]
+  q: string
+  tab: SearchTab
+  onTabChange: (t: SearchTab) => void
+  previewMessageId: string | null
+  onNavigateRoom: (roomId: string) => void
+  onPickMessage: (roomId: string, messageId: string) => void
+}) {
+  const peopleResults = q ? rooms.filter((r) => r.type === 'dm' && r.person && r.person.name.toLowerCase().includes(q)) : []
+  const chatroomResults = q ? rooms.filter((r) => r.title.toLowerCase().includes(q)) : []
+  const messageResults = q
+    ? rooms.flatMap((r) => r.messages.filter((m) => m.text.toLowerCase().includes(q)).map((m) => ({ room: r, message: m })))
+    : []
+
+  return (
+    <>
+      {/* @layout-space-magic-ok: gap-1=4px tab 按鈕間距 + pt=8px tab strip 上內距 — tab 元件內部微間距,非 layout-space 巨觀 gap */}
+      <div className="flex items-center gap-1 border-b border-divider px-[var(--layout-space-tight)] pt-2">
+        {(['people', 'chatroom', 'message'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onTabChange(t)}
+            className={SEARCH_TAB_BTN_CLASS}
+            style={{ fontSize: 13, fontWeight: 500, color: tab === t ? 'var(--color-primary)' : 'var(--color-neutral-7)' }}
+          >
+            {t}
+            {tab === t && <span className="absolute inset-x-0 -bottom-px h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />}
+          </button>
+        ))}
+      </div>
+      {/* @layout-space-magic-ok: py=8px 是 unbounded list 自帶上下內距(layoutSpace spec region 子分類),非巨觀 gap */}
+      <div className="scroll-hover min-h-0 flex-1 overflow-y-auto py-2">
+        {tab === 'people' && (peopleResults.length ? peopleResults.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onNavigateRoom(r.id)}
+            className={`${SEARCH_ROW_CLASS} items-center`}
+          >
+            <PersonAvatar person={r.person!} size={32} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.person!.name}</div>
+              <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>{r.person!.role}</div>
+            </div>
+          </button>
+        )) : <NoSearchResults />)}
+
+        {tab === 'chatroom' && (chatroomResults.length ? chatroomResults.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onNavigateRoom(r.id)}
+            className={`${SEARCH_ROW_CLASS} items-center`}
+          >
+            {r.origin === 'teams' ? <TeamsAvatar size={32} /> : r.type === 'dm' && r.person ? <PersonAvatar person={r.person} size={32} /> : <GroupAvatar size={32} />}
+            <div className="min-w-0 flex-1">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.title}</div>
+              <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>
+                {r.type === 'dm' ? 'Direct message' : `${r.memberKeys?.length ?? 0} members`}
+              </div>
+            </div>
+          </button>
+        )) : <NoSearchResults />)}
+
+        {tab === 'message' && (messageResults.length ? messageResults.map(({ room, message }) => {
+          const author = message.author === 'me' ? ME : PEOPLE[message.author]
+          return (
+            <button
+              key={message.id}
+              type="button"
+              onClick={() => onPickMessage(room.id, message.id)}
+              className={`${SEARCH_ROW_CLASS} items-start`}
+              style={previewMessageId === message.id ? { backgroundColor: 'var(--color-neutral-3)' } : undefined}
+            >
+              {author ? <PersonAvatar person={author} size={32} /> : <GroupAvatar size={32} />}
+              <div className="min-w-0 flex-1">
+                {/* @layout-space-magic-ok: gap-1.5=6px 作者名↔時間 inline 微間距,非 layout-space 巨觀 gap */}
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate" style={{ fontSize: 13, fontWeight: 500 }}>{author?.name ?? message.author}</span>
+                  <span className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>in {room.title}</span>
+                </div>
+                <p className="truncate" style={{ fontSize: 13, color: 'var(--color-neutral-8)' }}>{message.text}</p>
+              </div>
+              <span className="shrink-0" style={{ fontSize: 11, color: 'var(--color-neutral-6)' }}>{message.time}</span>
+            </button>
+          )
+        }) : <NoSearchResults />)}
+      </div>
+    </>
+  )
+}
+
+// Top-search chrome 的全頁搜尋結果 — universal search 輸入框有值時,覆蓋整個
+// Conversation view 的位置、成為頁面的一部分(非浮窗 panel)。左欄 = 與
+// SearchModal 相同的三 tab 結果列表;Message 結果點擊後右側開唯讀 preview。
+function SearchPageView({
+  rooms,
+  query,
+  onNavigateRoom,
+  onViewMessage,
+}: {
+  rooms: Room[]
+  query: string
+  onNavigateRoom: (roomId: string) => void
+  onViewMessage: (roomId: string, messageId: string) => void
+}) {
+  const [tab, setTab] = useState<SearchTab>('people')
+  const [preview, setPreview] = useState<{ roomId: string; messageId: string; token: number } | null>(null)
+  const q = query.trim().toLowerCase()
+  // 換關鍵字即重置 preview(與 SearchModal onChange 行為一致)
+  useEffect(() => { setPreview(null) }, [query])
+  const previewRoom = preview ? rooms.find((r) => r.id === preview.roomId) ?? null : null
+
+  return (
+    <section className="flex min-w-0 flex-1 bg-surface">
+      <div className="flex w-[480px] min-w-0 shrink-0 flex-col border-r border-divider">
+        <SearchResultsColumn
+          rooms={rooms}
+          q={q}
+          tab={tab}
+          onTabChange={setTab}
+          previewMessageId={preview?.messageId ?? null}
+          onNavigateRoom={onNavigateRoom}
+          onPickMessage={(roomId, messageId) => setPreview({ roomId, messageId, token: Date.now() })}
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col bg-canvas">
+        {tab === 'message' && previewRoom && preview ? (
+          <>
+            <MessagePreviewHeader room={previewRoom} onViewMessage={() => onViewMessage(preview.roomId, preview.messageId)} />
+            <MessageArea
+              room={previewRoom}
+              onOpenThread={() => {}}
+              fullWidth={false}
+              readOnly
+              flashMessageId={preview.messageId}
+              flashToken={preview.token}
+              scrollToMessageId={preview.messageId}
+            />
+          </>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-[var(--layout-space-tight)] px-[var(--layout-space-loose)] text-center">
+            <Search size={28} style={{ color: 'var(--color-neutral-5)' }} />
+            <p style={{ fontSize: 13, color: 'var(--color-neutral-7)' }}>
+              {tab === 'message' ? 'Select a message to preview it here' : 'Search results are shown on the left'}
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function SearchModal({
   rooms,
   onClose,
@@ -1879,15 +2076,9 @@ function SearchModal({
   onViewMessage: (roomId: string, messageId: string) => void
 }) {
   const [query, setQuery] = useState('')
-  const [tab, setTab] = useState<'people' | 'chatroom' | 'message'>('people')
+  const [tab, setTab] = useState<SearchTab>('people')
   const [preview, setPreview] = useState<{ roomId: string; messageId: string; token: number } | null>(null)
   const q = query.trim().toLowerCase()
-
-  const peopleResults = q ? rooms.filter((r) => r.type === 'dm' && r.person && r.person.name.toLowerCase().includes(q)) : []
-  const chatroomResults = q ? rooms.filter((r) => r.title.toLowerCase().includes(q)) : []
-  const messageResults = q
-    ? rooms.flatMap((r) => r.messages.filter((m) => m.text.toLowerCase().includes(q)).map((m) => ({ room: r, message: m })))
-    : []
 
   const previewRoom = preview ? rooms.find((r) => r.id === preview.roomId) ?? null : null
 
@@ -1920,78 +2111,15 @@ function SearchModal({
               <p style={{ fontSize: 13, color: 'var(--color-neutral-7)' }}>Search for people, chatrooms, or messages</p>
             </div>
           ) : (
-            <>
-              <div className="flex items-center gap-1 border-b border-divider px-3 pt-2">
-                {(['people', 'chatroom', 'message'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTab(t)}
-                    className="relative px-3 pb-2 capitalize"
-                    style={{ fontSize: 13, fontWeight: 500, color: tab === t ? 'var(--color-primary)' : 'var(--color-neutral-7)' }}
-                  >
-                    {t}
-                    {tab === t && <span className="absolute inset-x-0 -bottom-px h-0.5" style={{ backgroundColor: 'var(--color-primary)' }} />}
-                  </button>
-                ))}
-              </div>
-              <div className="scroll-hover min-h-0 flex-1 overflow-y-auto py-2">
-                {tab === 'people' && (peopleResults.length ? peopleResults.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => onNavigateRoom(r.id)}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
-                  >
-                    <PersonAvatar person={r.person!} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.person!.name}</div>
-                      <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>{r.person!.role}</div>
-                    </div>
-                  </button>
-                )) : <NoSearchResults />)}
-
-                {tab === 'chatroom' && (chatroomResults.length ? chatroomResults.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => onNavigateRoom(r.id)}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
-                  >
-                    {r.origin === 'teams' ? <TeamsAvatar size={32} /> : r.type === 'dm' && r.person ? <PersonAvatar person={r.person} size={32} /> : <GroupAvatar size={32} />}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{r.title}</div>
-                      <div className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>
-                        {r.type === 'dm' ? 'Direct message' : `${r.memberKeys?.length ?? 0} members`}
-                      </div>
-                    </div>
-                  </button>
-                )) : <NoSearchResults />)}
-
-                {tab === 'message' && (messageResults.length ? messageResults.map(({ room, message }) => {
-                  const author = message.author === 'me' ? ME : PEOPLE[message.author]
-                  return (
-                    <button
-                      key={message.id}
-                      type="button"
-                      onClick={() => setPreview({ roomId: room.id, messageId: message.id, token: Date.now() })}
-                      className="flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-neutral-hover"
-                      style={preview?.messageId === message.id ? { backgroundColor: 'var(--color-neutral-3)' } : undefined}
-                    >
-                      {author ? <PersonAvatar person={author} size={32} /> : <GroupAvatar size={32} />}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate" style={{ fontSize: 13, fontWeight: 500 }}>{author?.name ?? message.author}</span>
-                          <span className="truncate" style={{ fontSize: 12, color: 'var(--color-neutral-7)' }}>in {room.title}</span>
-                        </div>
-                        <p className="truncate" style={{ fontSize: 13, color: 'var(--color-neutral-8)' }}>{message.text}</p>
-                      </div>
-                      <span className="shrink-0" style={{ fontSize: 11, color: 'var(--color-neutral-6)' }}>{message.time}</span>
-                    </button>
-                  )
-                }) : <NoSearchResults />)}
-              </div>
-            </>
+            <SearchResultsColumn
+              rooms={rooms}
+              q={q}
+              tab={tab}
+              onTabChange={setTab}
+              previewMessageId={preview?.messageId ?? null}
+              onNavigateRoom={onNavigateRoom}
+              onPickMessage={(roomId, messageId) => setPreview({ roomId, messageId, token: Date.now() })}
+            />
           )}
         </div>
 
@@ -2457,6 +2585,8 @@ export default function App({
   // navigates away — returning to the room later shows no divider.
   const [lastReadDivider, setLastReadDivider] = useState<{ roomId: string; messageId: string } | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  // top-search chrome 的 universal search 關鍵字(有值 → SearchPageView 覆蓋 Conversation)
+  const [topQuery, setTopQuery] = useState('')
   // Jump-to-message from the universal search modal's "View message" button —
   // bumping token re-triggers the one-time indigo-6 flash on the same message.
   const [flash, setFlash] = useState<{ roomId: string; messageId: string; token: number } | null>(null)
@@ -2465,6 +2595,7 @@ export default function App({
   const unreadCount = rooms.filter((r) => r.unread && !mutedIds.has(r.id)).length
   const groupAvatarMode = config?.groupAvatarMode ?? 'icon'
   const chrome = config?.chrome ?? 'nav-rail'
+  const topSearching = chrome === 'top-search' && topQuery.trim() !== ''
 
   function handleToggleMute(id: string) {
     const willMute = !mutedIds.has(id)
@@ -2505,6 +2636,17 @@ export default function App({
     if (roomId !== activeId) handleSelectRoom(roomId)
     setFlash({ roomId, messageId, token: Date.now() })
     setSearchOpen(false)
+  }
+
+  // top-search chrome:全頁搜尋結果的對應 handler — 清空關鍵字即退出搜尋、回到 Conversation。
+  function handleTopNavigateRoom(roomId: string) {
+    if (roomId !== activeId) handleSelectRoom(roomId)
+    setTopQuery('')
+  }
+  function handleTopViewMessage(roomId: string, messageId: string) {
+    if (roomId !== activeId) handleSelectRoom(roomId)
+    setFlash({ roomId, messageId, token: Date.now() })
+    setTopQuery('')
   }
 
   function handleToggleFavorite(id: string) {
@@ -2565,22 +2707,32 @@ export default function App({
             onSearch={() => setSearchOpen(true)}
           />
         )}
-        <Conversation
-          room={current}
-          listOpen={listOpen}
-          onExpandList={() => setListOpen(true)}
-          fullWidth={fullWidth}
-          onToggleFullWidth={() => setFullWidth((v) => !v)}
-          isMuted={mutedIds.has(current.id)}
-          onToggleMute={() => handleToggleMute(current.id)}
-          onSend={handleSend}
-          onThreadSend={handleThreadSend}
-          onAction={onAction}
-          groupAvatarMode={groupAvatarMode}
-          lastReadMessageId={lastReadDivider?.roomId === current.id ? lastReadDivider.messageId : null}
-          flashMessageId={flash?.roomId === current.id ? flash.messageId : null}
-          flashToken={flash?.roomId === current.id ? flash.token : undefined}
-        />
+        {topSearching ? (
+          // universal search 有值 → 全頁結果覆蓋整個 Conversation view(頁面一部分,非浮窗)
+          <SearchPageView
+            rooms={rooms}
+            query={topQuery}
+            onNavigateRoom={handleTopNavigateRoom}
+            onViewMessage={handleTopViewMessage}
+          />
+        ) : (
+          <Conversation
+            room={current}
+            listOpen={listOpen}
+            onExpandList={() => setListOpen(true)}
+            fullWidth={fullWidth}
+            onToggleFullWidth={() => setFullWidth((v) => !v)}
+            isMuted={mutedIds.has(current.id)}
+            onToggleMute={() => handleToggleMute(current.id)}
+            onSend={handleSend}
+            onThreadSend={handleThreadSend}
+            onAction={onAction}
+            groupAvatarMode={groupAvatarMode}
+            lastReadMessageId={lastReadDivider?.roomId === current.id ? lastReadDivider.messageId : null}
+            flashMessageId={flash?.roomId === current.id ? flash.messageId : null}
+            flashToken={flash?.roomId === current.id ? flash.token : undefined}
+          />
+        )}
     </>
   )
 
@@ -2590,7 +2742,8 @@ export default function App({
         <div className="flex h-screen w-full flex-col overflow-hidden bg-canvas text-foreground">
           <TopSearchBar
             onOpenSettings={() => { setSettingsOpen(true); onAction?.({ type: 'open-settings' }) }}
-            onSearch={() => setSearchOpen(true)}
+            query={topQuery}
+            onQueryChange={setTopQuery}
           />
           <div className="flex min-h-0 flex-1">{columns}</div>
         </div>

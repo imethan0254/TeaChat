@@ -22,7 +22,7 @@ App  (export default)
     └── SettingsModal           overlay，由 NavRail more → Settings 開啟
 ```
 
-`config.chrome === 'top-search'`（Teams 整合 prototype，story `Apps/chat/Teams Integration`，檔案 `TeamsChat.stories.tsx`）時改為：
+`config.chrome === 'top-search'`（Teams 整合 prototype，story `Apps/chat/Teams Integration`，檔案 `TeamsChat.stories.tsx`；story config 另帶 `initialShowPreview: false` — chat message preview 預設 OFF，2026-07-06 user 指定）時改為：
 
 ```
 App
@@ -31,7 +31,7 @@ App
     ├── TopSearchBar            頂部 chrome（取代 NavRail，見 §1a）
     └── div.flex.min-h-0.flex-1 ← 2-column（NavRail 移除）
         ├── ChatList
-        └── Conversation
+        └── Conversation ⇄ SearchPageView（universal search 有值時整區換成全頁搜尋結果，見 §1a）
 ```
 
 ---
@@ -70,23 +70,29 @@ NavRail
 
 ---
 
-## 1a. Top search bar — `function TopSearchBar`（chrome='top-search'，2026-07-06 new）
+## 1a. Top search bar — `function TopSearchBar`（chrome='top-search'，2026-07-06 new，同日 v2 改版）
 
 Teams 整合 prototype（story `Apps/chat/Teams Integration`）的頂部 chrome，`config.chrome === 'top-search'` 時取代 NavRail：
 
 ```
 TopSearchBar  (header，h=48px，border-b，grid-cols-[1fr_auto_1fr])
-├── Logo                        靠左（沿用 NavRail 的 Logo）
+├── （左欄留空 — logo 已移除，2026-07-06 v2；1fr 佔位維持置中）
 ├── Universal search input      正中間（DS Input + startIcon Search，placeholder "search"，
-│                               readOnly trigger：click / Enter / Space 開啟既有 SearchModal）
+│                               controlled input；query 由 App `topQuery` state 持有；
+│                               有值時 endAction X 清空；Escape 清空 + blur）
+│   └── Hint panel              focus 且無關鍵字 → input 正下方浮出（search icon 28 +
+│                               「Search for people, chat rooms, or messages」；原 SearchModal
+│                               empty state 內容，panel 內 search bar 那排已移除）
 └── 右側（由右至左：PersonAvatar → DropdownMenu）
     ├── DropdownMenu (More)     與 NavRail 同選單（Settings / Help / Sign out），tooltip side="bottom"
     └── Avatar (ME)             我的頭像（最右）
 ```
 
 - `grid-cols-[1fr_auto_1fr]` 讓 search input 永遠在視窗正中間，不受左右內容寬度影響；input 寬 `min(480px, 40vw)`。
-- Search input 是 SearchModal 的 trigger（對齊 Teams / Slack top-bar search）——本身不做 inline 過濾，點擊即開 universal search。
+- **輸入框有值 → 全頁結果**：App `topSearching`（`chrome==='top-search' && topQuery 非空`）時，`SearchPageView` **覆蓋整個 Conversation view 的位置成為頁面的一部分（非浮窗 panel）**；清空關鍵字（X / Escape / 手動刪除）即回到 Conversation。
+- `SearchPageView`：左欄 480px = `SearchResultsColumn`（與 SearchModal 共用的 People/Chatroom/Message 三 tab 結果列表，單一 SSOT 不重複 markup）；Message 結果點擊 → 右側唯讀 preview（`MessagePreviewHeader` + `MessageArea readOnly` + flash/scroll，與 modal 行為一致）；「View message」→ 關閉搜尋、切 room、主畫面 flash 該訊息。People/Chatroom 結果點擊 → 直接切 room 並退出搜尋。
 - NavRail 的 Home / Chats tab 與未讀 badge 不搬移（此 prototype 只有 chat 一個 surface）。
+- 頂部 chrome spacing 走 `--layout-space-*` token；48px 高度為 documented escape（對齊 Teams top bar）。
 
 ---
 
@@ -168,7 +174,7 @@ Conversation
 > - **分隔線 padding（2026-06-25）**：`DateDivider`/`LastReadDivider` 根 div 加 `px-10`（40px），疊加在 `MessageArea` 既有 `px-4`（16px）外層 padding 之上 —— full-width ON 時等於離視窗真實邊緣 56px（16+40），與 InputBox 等元素對齊；full-width OFF 時則是在 `maxWidth:960` 置中欄內左右 40px，兩種模式皆滿足規格、不需另外條件判斷。
 > - Demo 資料：`shinichi`（預設/未讀 room）m1 = 3 天前（本週一）、m2/m3 = 昨天、m4–m7 = 今天（省略 `date`），同時展示三種桶 + Last read 線（落在最後一則 m7 上方）。`ai`/`ran` room 的 `5/28`/`5/25` 訊息補 `date: '2026-05-28'/'2026-05-25'`（今年本週以前桶）；`engineering` room `e1` 改 `date: '2025-05-26'`（跨年桶）。Thread panel 內訊息不顯示日期分隔線（僅 main MessageArea）。
 
-> **Universal Search modal（2026-06-25 new）**：點擊 ChatList header 的 `ListBtn icon={Search}`（非 ConversationHeader 內既有的單聊室內搜尋按鈕，那是獨立既有功能不動）開啟 `SearchModal`。
+> **Universal Search modal（2026-06-25 new；2026-07-06 抽共用）**：點擊 ChatList header 的 `ListBtn icon={Search}`（非 ConversationHeader 內既有的單聊室內搜尋按鈕，那是獨立既有功能不動）開啟 `SearchModal`。三 tab 結果列表已抽成 `SearchResultsColumn`（`SEARCH_ROW_CLASS` / `SEARCH_TAB_BTN_CLASS` 共用 class 常數），由 SearchModal（浮窗）與 top-search chrome 的 `SearchPageView`（全頁）共用，單一 SSOT。
 > - **視覺**：`fixed inset-0` 透明點擊捕捉層（**無 dimmed backdrop**，點擊空白處關閉）+ 浮動卡片（`rounded-2xl` 白底卡，定位於螢幕上方居中，參考 ClickUp 命令面板風格）。
 > - **Search bar**：placeholder 固定為 `Search people, chatroom, or message…`；無關鍵字 = empty state（圖示 + 提示文字）；輸入後出現 People/Chatroom/Message 三個 tab（預設 People），結果列表的資訊結構參考 Microsoft Teams 搜尋結果（avatar + 主文字 + 次要文字/位置 + 右側時間）。
 > - **People tab**：比對 DM room 的 `person.name`；點擊直接 `onNavigateRoom` 切換到該 DM room 並關閉 modal。
