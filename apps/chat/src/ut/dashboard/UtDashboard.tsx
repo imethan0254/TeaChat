@@ -11,6 +11,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   Button,
+  Checkbox,
+  DatePicker,
   Input,
   Notice,
   Select,
@@ -190,6 +192,9 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
   const [testId, setTestId] = useState<string>('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState<string>('') // ISO YYYY-MM-DD;'' = 不限
+  const [dateTo, setDateTo] = useState<string>('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()) // 場次明細勾選(導出用)
 
   async function fetchRows(overrideKey?: string) {
     const dashKey = overrideKey ?? readDashKey()
@@ -244,13 +249,49 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
     if (ids.length && !ids.includes(testId)) setTestId(ids[0])
   }, [ids, testId])
 
-  const sessions = useMemo(() => allSessions.filter((s) => s.testId === testId), [allSessions, testId])
+  // 篩選:test_id + 日期範圍(比對 created_at 的 YYYY-MM-DD,字串比較即可)。
+  const sessions = useMemo(
+    () =>
+      allSessions.filter((s) => {
+        if (s.testId !== testId) return false
+        const d = s.createdAt.slice(0, 10)
+        if (dateFrom && d < dateFrom) return false
+        if (dateTo && d > dateTo) return false
+        return true
+      }),
+    [allSessions, testId, dateFrom, dateTo],
+  )
   const ov = useMemo(() => overview(sessions), [sessions])
   const variantAgg = useMemo(() => variantAggregates(sessions), [sessions])
   const taskAgg = useMemo(() => taskAggregates(sessions), [sessions])
 
+  // 篩選集變動 → 勾選預設全選(依當前 sessions 的 id 集合)。
+  const sessionIdKey = sessions.map((s) => s.id).join(',')
+  useEffect(() => {
+    setSelectedIds(new Set(sessions.map((s) => s.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionIdKey])
+
+  const selectedSessions = useMemo(() => sessions.filter((s) => selectedIds.has(s.id)), [sessions, selectedIds])
+  const allChecked = sessions.length > 0 && selectedIds.size === sessions.length
+  const someChecked = selectedIds.size > 0 && !allChecked
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  function toggleAll() {
+    setSelectedIds(allChecked ? new Set() : new Set(sessions.map((s) => s.id)))
+  }
+
+  // 導出一律走「已勾選」的場次(預設全選)。
   const doExport = (kind: 'quant' | 'transcript' | 'raw') => {
-    const csv = kind === 'quant' ? quantCsv(sessions) : kind === 'transcript' ? transcriptCsv(sessions) : rawCsv(sessions)
+    const src = selectedSessions
+    const csv = kind === 'quant' ? quantCsv(src) : kind === 'transcript' ? transcriptCsv(src) : rawCsv(src)
     downloadText(exportFilename(kind, testId), csv)
   }
 
@@ -275,7 +316,7 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
             />
           )}
           {!rows && (
-            <Button variant="secondary" size="sm" startIcon={RefreshCw} onClick={() => void fetchRows()}>
+            <Button variant="tertiary" size="sm" startIcon={RefreshCw} onClick={() => void fetchRows()}>
               重新整理
             </Button>
           )}
@@ -334,8 +375,29 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
         </div>
       )}
 
-      {load.status === 'ready' && sessions.length > 0 && (
+      {load.status === 'ready' && allSessions.length > 0 && (
         <>
+          {/* 日期範圍篩選 */}
+          <div className="ut-dash-toolbar flex flex-wrap items-center gap-2" style={{ marginTop: 16 }}>
+            <span className="text-neutral-6" style={{ fontSize: 13 }}>日期範圍</span>
+            <div style={{ width: 168 }}>
+              <DatePicker aria-label="起始日" size="sm" clearable placeholder="起始日" value={dateFrom || null} onChange={setDateFrom} />
+            </div>
+            <span className="text-neutral-6" style={{ fontSize: 13 }}>至</span>
+            <div style={{ width: 168 }}>
+              <DatePicker aria-label="結束日" size="sm" clearable placeholder="結束日" value={dateTo || null} onChange={setDateTo} />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button variant="text" size="sm" onClick={() => { setDateFrom(''); setDateTo('') }}>清除</Button>
+            )}
+          </div>
+
+          {sessions.length === 0 ? (
+            <div style={{ marginTop: 16 }}>
+              <Notice variant="info" title="這個日期範圍沒有資料" description="調整或清除日期範圍再試。" dismissible={false} />
+            </div>
+          ) : (
+          <>
           {/* 總覽卡片 */}
           <div className="flex flex-wrap gap-3" style={{ marginTop: 16 }}>
             <StatCard label="場次" value={ov.sessions} />
@@ -348,18 +410,19 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
             />
           </div>
 
-          {/* 導出工具列 */}
+          {/* 導出工具列(導出 = 場次明細已勾選的場次;預設全選) */}
           <div className="ut-dash-toolbar flex flex-wrap items-center gap-2" style={{ marginTop: 16 }}>
-            <Button variant="primary" size="sm" startIcon={Download} onClick={() => doExport('quant')}>量化彙總 CSV</Button>
-            <Button variant="secondary" size="sm" startIcon={FileText} onClick={() => doExport('transcript')}>逐字稿 CSV</Button>
-            <Button variant="secondary" size="sm" startIcon={FileDown} onClick={() => doExport('raw')}>原始 raw CSV</Button>
+            <Button variant="primary" size="sm" startIcon={Download} disabled={selectedSessions.length === 0} onClick={() => doExport('quant')}>量化彙總 CSV</Button>
+            <Button variant="secondary" size="sm" startIcon={FileText} disabled={selectedSessions.length === 0} onClick={() => doExport('transcript')}>逐字稿 CSV</Button>
+            <Button variant="secondary" size="sm" startIcon={FileDown} disabled={selectedSessions.length === 0} onClick={() => doExport('raw')}>原始 raw CSV</Button>
             <Button variant="tertiary" size="sm" startIcon={Printer} onClick={printReport}>列印 / 存 PDF</Button>
+            <span className="text-neutral-6" style={{ fontSize: 12 }}>導出 {selectedSessions.length} / {sessions.length} 場</span>
             <Chip tone="warning">逐字稿 / raw 含個資,請妥善保管</Chip>
           </div>
 
-          {/* 分頁 */}
-          <Tabs defaultValue="variants" style={{ marginTop: 16 }}>
-            <TabsList>
+          {/* 分頁(切換平行檢視 → DS canonical 用 Tabs;size lg = page-level 主視覺)*/}
+          <Tabs defaultValue="variants" style={{ marginTop: 20 }}>
+            <TabsList size="lg">
               <TabsTrigger value="variants">版本比較</TabsTrigger>
               <TabsTrigger value="tasks">各任務成功率</TabsTrigger>
               <TabsTrigger value="sessions">場次明細</TabsTrigger>
@@ -419,9 +482,19 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
 
             {/* 場次明細 */}
             <TabsContent value="sessions">
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
+              <div className="text-neutral-6" style={{ fontSize: 12, marginTop: 12 }}>
+                勾選要導出的場次(預設全選);上方導出鈕只會輸出已勾選的場次。
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
                 <thead>
                   <tr>
+                    <Th align="center">
+                      <Checkbox
+                        aria-label="全選"
+                        checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                        onCheckedChange={toggleAll}
+                      />
+                    </Th>
                     <Th>日期</Th>
                     <Th>受測者</Th>
                     <Th>版本</Th>
@@ -434,6 +507,13 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
                   {sessions.map((s) => (
                     <Fragment key={s.id}>
                       <tr>
+                        <Td align="center">
+                          <Checkbox
+                            aria-label={`選取 ${s.tester || s.id}`}
+                            checked={selectedIds.has(s.id)}
+                            onCheckedChange={() => toggleOne(s.id)}
+                          />
+                        </Td>
                         <Td>{fmtDate(s.createdAt)}</Td>
                         <Td>{s.tester || '—'}</Td>
                         <Td>{s.variants}</Td>
@@ -447,7 +527,7 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
                       </tr>
                       {expanded === s.id && (
                         <tr>
-                          <td colSpan={6} style={{ padding: '4px 12px 12px' }}>
+                          <td colSpan={7} style={{ padding: '4px 12px 12px' }}>
                             <SessionDetail session={s} />
                           </td>
                         </tr>
@@ -458,6 +538,8 @@ export function UtDashboard({ rows, endpoint = DEFAULT_ENDPOINT }: UtDashboardPr
               </table>
             </TabsContent>
           </Tabs>
+          </>
+          )}
         </>
       )}
     </div>
