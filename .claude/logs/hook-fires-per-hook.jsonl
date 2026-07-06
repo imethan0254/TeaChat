@@ -3103,3 +3103,12 @@
 {"ts":"2026-07-06T22:52:10Z","hook":"check_solo_workflow.sh"}
 {"ts":"2026-07-06T22:52:10Z","hook":"check_codex_collab_5step.sh"}
 {"ts":"2026-07-06T22:52:10Z","hook":"check_codex_brief_invariants.sh"}
+{"ts":"2026-07-06T22:52:12Z","hook":"check_post_main_ssot_propagate.sh"}
+{"ts":"2026-07-06T22:52:12Z","hook":"inject_deploy_url_after_push.sh"}
+{"ts":"2026-07-06T22:52:54Z","hook":"check_propose_discipline.sh"}
+{"ts":"2026-07-06T22:52:54Z","hook":"stop_self_audit.sh"}
+{"ts":"2026-07-06T22:52:54Z","hook":"stop_passive_logging.sh"}
+{"ts":"2026-07-06T22:52:54Z","hook":"check_orphan_ds_css.sh"}
+{"ts":"2026-07-06T22:53:07Z","hook":"check_solo_workflow.sh"}
+{"ts":"2026-07-06T22:53:07Z","hook":"check_codex_brief_invariants.sh"}
+{"ts":"2026-07-06T22:53:07Z","hook":"check_codex_collab_5step.sh"}
