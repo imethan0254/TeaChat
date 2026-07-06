@@ -2562,6 +2562,12 @@ export type ChatVariantConfig = {
   chrome?: 'nav-rail' | 'top-search'
   /** 注入 Microsoft Teams 匯入的聊天室 demo 資料(全部 general chatroom,TeamsAvatar 標示)。預設 false。 */
   includeTeamsRooms?: boolean
+  /**
+   * Teams 匯入房的標示方式(UT 變體用,不影響本體 prototype 預設):
+   * - 'avatar'(預設)= Teams 品牌色頭像標示(TeamsAvatar)
+   * - 'suffix' = 一般 GroupAvatar + 房名後綴「[Teams]」(origin 標記移除,標示全靠文字後綴)
+   */
+  teamsRoomMarker?: 'avatar' | 'suffix'
 }
 
 // 依 seed 做穩定洗牌(各版本不同 seed → 不同排序,但同版本每次一致)。
@@ -2577,16 +2583,21 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 // Teams 匯入 room 注入:favorites 排在既有最愛之後;chats 穿插在既有列表前段
 // (migrated 室近期仍活躍,排前面才看得到標示),不打亂其餘既有順序。
-function withTeamsRooms(rooms: Room[]): Room[] {
+function withTeamsRooms(rooms: Room[], marker: 'avatar' | 'suffix' = 'avatar'): Room[] {
+  // marker='suffix'(UT 變體 B):拿掉 origin(→ 一般 GroupAvatar),房名加後綴「[Teams]」,
+  // 標示全靠文字;room id 不變,UT check 依 id 判定不受影響。
+  const teamsRooms = marker === 'suffix'
+    ? TEAMS_MIGRATED_ROOMS.map((r) => ({ ...r, origin: undefined, title: `${r.title} [Teams]` }))
+    : TEAMS_MIGRATED_ROOMS
   const favs = rooms.filter((r) => r.section === 'favorites')
   const chats = rooms.filter((r) => r.section !== 'favorites')
-  const tFavs = TEAMS_MIGRATED_ROOMS.filter((r) => r.section === 'favorites')
-  const tChats = TEAMS_MIGRATED_ROOMS.filter((r) => r.section !== 'favorites')
+  const tFavs = teamsRooms.filter((r) => r.section === 'favorites')
+  const tChats = teamsRooms.filter((r) => r.section !== 'favorites')
   return [...favs, ...tFavs, ...chats.slice(0, 2), ...tChats, ...chats.slice(2)]
 }
 // 依 roomOrderSeed 重排 rooms(favorites / chats 各自打散,保留分組)。未給 seed → 原序。
-function orderedRooms(seed?: number, includeTeams?: boolean): Room[] {
-  const base = includeTeams ? withTeamsRooms(INITIAL_ROOMS) : INITIAL_ROOMS
+function orderedRooms(seed?: number, includeTeams?: boolean, teamsMarker?: 'avatar' | 'suffix'): Room[] {
+  const base = includeTeams ? withTeamsRooms(INITIAL_ROOMS, teamsMarker) : INITIAL_ROOMS
   if (seed == null) return base
   const favs = seededShuffle(base.filter((r) => r.section === 'favorites'), seed)
   const chats = seededShuffle(base.filter((r) => r.section !== 'favorites'), (seed ^ 0x9e3779b9) >>> 0)
@@ -2602,13 +2613,16 @@ export type ChatAction =
   | { type: 'thread-reply'; roomId: string; messageId: string }
   | { type: 'open-settings' }
   | { type: 'toggle-preview'; value: boolean }
+  // top-search chrome:全頁搜尋結果的操作(UT 用;點結果切房 / 點「View message」跳訊息)
+  | { type: 'search-navigate'; roomId: string; roomTitle: string }
+  | { type: 'search-view-message'; roomId: string; messageId: string }
 
 export default function App({
   config,
   onAction,
 }: { config?: ChatVariantConfig; onAction?: (a: ChatAction) => void } = {}) {
-  const [rooms, setRooms] = useState<Room[]>(() => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms))
-  const [activeId, setActiveId] = useState<string>(() => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms)[0].id)
+  const [rooms, setRooms] = useState<Room[]>(() => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms, config?.teamsRoomMarker))
+  const [activeId, setActiveId] = useState<string>(() => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms, config?.teamsRoomMarker)[0].id)
   const [listOpen, setListOpen] = useState(config?.initialListOpen ?? true)
   const [listWidth, setListWidth] = useState(320)
   const [showPreview, setShowPreview] = useState(config?.initialShowPreview ?? true)
@@ -2616,7 +2630,7 @@ export default function App({
   const [mutedIds, setMutedIds] = useState<Set<string>>(new Set())
   const [fullWidth, setFullWidth] = useState(config?.initialFullWidth ?? true)
   const [favOrder, setFavOrder] = useState<string[]>(
-    () => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms).filter((r) => r.section === 'favorites').map((r) => r.id)
+    () => orderedRooms(config?.roomOrderSeed, config?.includeTeamsRooms, config?.teamsRoomMarker).filter((r) => r.section === 'favorites').map((r) => r.id)
   )
   // The "Last read" divider only shows for the room/message captured at the
   // moment an unread room is opened, and is cleared the instant the user
@@ -2678,10 +2692,13 @@ export default function App({
 
   // top-search chrome:全頁搜尋結果的對應 handler — 清空關鍵字即退出搜尋、回到 Conversation。
   function handleTopNavigateRoom(roomId: string) {
+    const r = rooms.find((x) => x.id === roomId)
+    onAction?.({ type: 'search-navigate', roomId, roomTitle: r?.title ?? roomId })
     if (roomId !== activeId) handleSelectRoom(roomId)
     setTopQuery('')
   }
   function handleTopViewMessage(roomId: string, messageId: string) {
+    onAction?.({ type: 'search-view-message', roomId, messageId })
     if (roomId !== activeId) handleSelectRoom(roomId)
     setFlash({ roomId, messageId, token: Date.now() })
     setTopQuery('')
