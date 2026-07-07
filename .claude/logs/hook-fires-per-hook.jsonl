@@ -4442,3 +4442,13 @@
 {"ts":"2026-07-07T05:35:31Z","hook":"check_solo_workflow.sh"}
 {"ts":"2026-07-07T05:35:31Z","hook":"check_codex_brief_invariants.sh"}
 {"ts":"2026-07-07T05:35:31Z","hook":"check_codex_collab_5step.sh"}
+{"ts":"2026-07-07T05:35:32Z","hook":"inject_deploy_url_after_push.sh"}
+{"ts":"2026-07-07T05:35:32Z","hook":"check_post_main_ssot_propagate.sh"}
+{"ts":"2026-07-07T05:35:40Z","hook":"check_codex_collab_5step.sh"}
+{"ts":"2026-07-07T05:35:40Z","hook":"check_codex_brief_invariants.sh"}
+{"ts":"2026-07-07T05:35:40Z","hook":"check_solo_workflow.sh"}
+{"ts":"2026-07-07T05:35:41Z","hook":"inject_deploy_url_after_push.sh"}
+{"ts":"2026-07-07T05:35:41Z","hook":"check_post_main_ssot_propagate.sh"}
+{"ts":"2026-07-07T05:35:48Z","hook":"check_solo_workflow.sh"}
+{"ts":"2026-07-07T05:35:48Z","hook":"check_codex_collab_5step.sh"}
+{"ts":"2026-07-07T05:35:48Z","hook":"check_codex_brief_invariants.sh"}
