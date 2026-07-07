@@ -401,11 +401,11 @@ const INITIAL_ROOMS: Room[] = [
     unread: true,
     person: PEOPLE.ai,
     messages: [
-      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '5/28', date: '2026-05-28', threadMessages: [
-        { id: 'a1-t1', author: 'ai', text: 'Three oolong, two green tea varieties.', time: '5/28' },
-        { id: 'a1-t2', author: 'me', text: 'I will set up the cupping station.', time: '5/28' },
+      { id: 'a1', author: 'ai', text: 'The new supplier samples arrived.', time: '15:20', date: '2026-05-28', threadMessages: [
+        { id: 'a1-t1', author: 'ai', text: 'Three oolong, two green tea varieties.', time: '15:22', date: '2026-05-28' },
+        { id: 'a1-t2', author: 'me', text: 'I will set up the cupping station.', time: '15:24', date: '2026-05-28' },
       ] },
-      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '5/28', date: '2026-05-28', msgStatus: 'read' },
+      { id: 'a2', author: 'me', text: 'Perfect, let us cup them tomorrow.', time: '15:30', date: '2026-05-28', msgStatus: 'read' },
     ],
   },
   {
@@ -415,7 +415,7 @@ const INITIAL_ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     person: PEOPLE.ran,
-    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: '5/25', date: '2026-05-25' }],
+    messages: [{ id: 'r1', author: 'ran', text: 'Thanks! Have a great weekend 🍵', time: '17:45', date: '2026-05-25' }],
   },
   {
     id: 'product-team',
@@ -504,7 +504,7 @@ const INITIAL_ROOMS: Room[] = [
     section: 'chats',
     unread: false,
     memberKeys: ['kenji', 'yui'],
-    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '5/26', date: '2025-05-26' }],
+    messages: [{ id: 'e1', author: 'kenji', text: 'PR merged. Closing the ticket.', time: '18:10', date: '2025-05-26' }],
   },
   ...GENERATED_CHAT_ROOMS,
 ]
@@ -544,8 +544,8 @@ const TEAMS_MIGRATED_ROOMS: Room[] = [
     id: 'teams-ai', type: 'general', origin: 'teams', title: PEOPLE.ai.name, section: 'chats', unread: false,
     memberKeys: ['ai'],
     messages: [
-      { id: 'tai1', author: 'ai', text: 'Resending the supplier sample log here since we moved off Teams.', time: '5/30', date: '2026-05-30' },
-      { id: 'tai2', author: 'me', text: 'Received — I will fold it into the Q3 cupping plan.', time: '5/30', date: '2026-05-30', msgStatus: 'read' },
+      { id: 'tai1', author: 'ai', text: 'Resending the supplier sample log here since we moved off Teams.', time: '10:05', date: '2026-05-30' },
+      { id: 'tai2', author: 'me', text: 'Received — I will fold it into the Q3 cupping plan.', time: '10:12', date: '2026-05-30', msgStatus: 'read' },
     ],
   },
   {
@@ -553,16 +553,16 @@ const TEAMS_MIGRATED_ROOMS: Room[] = [
     id: 'teams-ran', type: 'general', origin: 'teams', title: PEOPLE.ran.name, section: 'chats', unread: false,
     memberKeys: ['ran'],
     messages: [
-      { id: 'tra1', author: 'ran', text: 'Archiving our Teams chat here — see you on TeaChat from now on!', time: '5/27', date: '2026-05-27' },
-      { id: 'tra2', author: 'me', text: 'Welcome aboard 🍵', time: '5/27', date: '2026-05-27', msgStatus: 'read' },
+      { id: 'tra1', author: 'ran', text: 'Archiving our Teams chat here — see you on TeaChat from now on!', time: '16:40', date: '2026-05-27' },
+      { id: 'tra2', author: 'me', text: 'Welcome aboard 🍵', time: '16:45', date: '2026-05-27', msgStatus: 'read' },
     ],
   },
   {
     id: 'teams-vendor', type: 'general', origin: 'teams', title: 'Vendor Onboarding (Teams)', section: 'chats', unread: false,
     memberKeys: ['guanyu', 'yating', 'kenji'],
     messages: [
-      { id: 'tv1', author: 'yating', text: 'Checklist template is in the pinned tab, same structure as the Teams wiki.', time: '5/29', date: '2026-05-29' },
-      { id: 'tv2', author: 'me', text: 'Perfect, onboarding for the new cup supplier starts next week.', time: '5/29', date: '2026-05-29', msgStatus: 'read' },
+      { id: 'tv1', author: 'yating', text: 'Checklist template is in the pinned tab, same structure as the Teams wiki.', time: '11:20', date: '2026-05-29' },
+      { id: 'tv2', author: 'me', text: 'Perfect, onboarding for the new cup supplier starts next week.', time: '11:28', date: '2026-05-29', msgStatus: 'read' },
     ],
   },
 ]
@@ -1002,6 +1002,7 @@ function RoomRow({
   showPreview: boolean
   groupAvatarMode?: 'icon' | 'initial'
 }) {
+  const now = new Date()
   const latestMsg = room.messages[room.messages.length - 1]
   const latestAuthor = latestMsg?.author === 'me' ? 'You' : (PEOPLE[latestMsg?.author]?.name.split(' ')[0] ?? '')
   const previewText = latestMsg ? `${latestAuthor}: ${latestMsg.text}` : ''
@@ -1047,7 +1048,7 @@ function RoomRow({
               {room.title}
             </span>
             <span className="shrink-0 group-hover:invisible" style={timeStyle}>
-              {latestMsg?.time ?? ''}
+              {latestMsg ? formatListTime(latestMsg, now) : ''}
             </span>
           </div>
           {/* Line 2: preview (flex-1 truncate) + unread dot (shrink-0; invisible on hover) */}
@@ -1493,12 +1494,14 @@ function MessageBubble({
     const t = setTimeout(() => setFlashing(false), 1200)
     return () => clearTimeout(t)
   }, [flashToken])
+  const now = new Date()
   const mine = message.author === 'me'
   const author = mine ? null : PEOPLE[message.author] ?? null
   const replyCount = message.threadMessages?.length ?? message.replies ?? 0
-  const latestReplyTime = message.threadMessages?.length
-    ? message.threadMessages[message.threadMessages.length - 1].time
+  const latestReplyMsg = message.threadMessages?.length
+    ? message.threadMessages[message.threadMessages.length - 1]
     : null
+  const latestReplyTime = latestReplyMsg ? formatBubbleTime(latestReplyMsg, now) : null
   // A main-area copy of a thread reply ("Also send to chatroom"). Its bubble gets a
   // min-width so the "replied to a thread" link below always has room for the
   // L-connector + icon + at least "…"; the link is width-capped to the bubble.
@@ -1678,13 +1681,13 @@ function MessageBubble({
           <div className="flex flex-col gap-1 min-w-0">
             {mine && (
               <div className="flex justify-end pr-1">
-                <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{formatBubbleTime(message, now)}</span>
               </div>
             )}
             {!mine && author && (
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{author.name}</span>
-                <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{formatBubbleTime(message, now)}</span>
               </div>
             )}
             {bubble}
@@ -1711,7 +1714,7 @@ function MessageBubble({
         <div className="flex items-end min-w-0">
           <div className="flex flex-1 flex-col gap-1 min-w-0 items-end">
             <div className="flex justify-end pr-1">
-              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
+              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{formatBubbleTime(message, now)}</span>
             </div>
             {bubbleBlock}
           </div>
@@ -1734,7 +1737,7 @@ function MessageBubble({
           {author && (
             <div className="flex items-center gap-2">
               <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{author.name}</span>
-              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{message.time}</span>
+              <span style={{ fontSize: 12, fontWeight: 400, lineHeight: '130%', color: 'var(--color-neutral-7)' }}>{formatBubbleTime(message, now)}</span>
             </div>
           )}
           {bubbleBlock}
@@ -1791,8 +1794,58 @@ function formatDateDivider(target: Date, now: Date): string {
   return `${md}, ${target.getFullYear()}, ${weekLabel(target)}`
 }
 
+// ── Chat bubble 時間顯示規則(2026-07-06,AM/PM 制)──────────────────────────
+// message.date(缺→今天)+ message.time(HH:MM,24h)組成完整時間點。
+function msgDateTime(m: Message, now: Date): Date {
+  const base = getMsgDate(m, now) // date→當天 00:00,缺→今天 00:00
+  const hm = /^(\d{1,2}):(\d{2})$/.exec(m.time)
+  const d = new Date(base)
+  if (hm) d.setHours(Number(hm[1]), Number(hm[2]), 0, 0)
+  return d
+}
+// 12 小時 AM/PM,分鐘補零;12 AM = 午夜、12 PM = 中午。
+function fmtHM12(d: Date): string {
+  const mins = d.getMinutes()
+  const ap = d.getHours() < 12 ? 'AM' : 'PM'
+  let h = d.getHours() % 12
+  if (h === 0) h = 12
+  return `${h}:${String(mins).padStart(2, '0')} ${ap}`
+}
+// Bubble 內完整時間戳(含 hh:mm AM/PM):
+//   今天 → "3:30 PM" · 昨天 → "Yesterday 3:30 PM" · 本週其他天 → "Monday 3:30 PM"
+//   今年較早 → "05/28 3:30 PM" · 非今年 → "2025/05/26 3:30 PM"
+// 「本週」= 同一 ISO 週(避免跨週星期名歧義,與 DateDivider 同源判定)。
+function formatBubbleTime(m: Message, now: Date): string {
+  const dt = msgDateTime(m, now)
+  const diffDays = Math.round((startOfDay(now).getTime() - startOfDay(dt).getTime()) / 86400000)
+  const hm = fmtHM12(dt)
+  if (diffDays === 0) return hm
+  if (diffDays === 1) return `Yesterday ${hm}`
+  const sameWeek = diffDays > 0 && diffDays < 7 && getISOWeek(now) === getISOWeek(dt) && now.getFullYear() === dt.getFullYear()
+  if (sameWeek) return `${WEEKDAY_NAMES[dt.getDay()]} ${hm}`
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  if (dt.getFullYear() === now.getFullYear()) return `${mm}/${dd} ${hm}`
+  return `${dt.getFullYear()}/${mm}/${dd} ${hm}`
+}
+// 列表 / 搜尋結果的簡短時間(不含時分,今天例外)——配合 time 正規化後仍保留日期資訊,
+// 對齊 Teams / Slack 列表慣例:今天顯示時間、其餘顯示相對日期。分桶與 bubble 規則同源。
+function formatListTime(m: Message, now: Date): string {
+  const dt = msgDateTime(m, now)
+  const diffDays = Math.round((startOfDay(now).getTime() - startOfDay(dt).getTime()) / 86400000)
+  if (diffDays === 0) return fmtHM12(dt)
+  if (diffDays === 1) return 'Yesterday'
+  const sameWeek = diffDays > 0 && diffDays < 7 && getISOWeek(now) === getISOWeek(dt) && now.getFullYear() === dt.getFullYear()
+  if (sameWeek) return WEEKDAY_NAMES[dt.getDay()]
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  if (dt.getFullYear() === now.getFullYear()) return `${mm}/${dd}`
+  return `${dt.getFullYear()}/${mm}/${dd}`
+}
+
 function DateDivider({ label }: { label: string }) {
   return (
+    // @layout-space-magic-ok: px-10=40px 疊在 MessageArea px-4 上 = 距視窗邊 56px(對齊 InputBox 等元素),documented STRUCTURE.md 分隔線 padding spec
     <div className="flex items-center gap-3 px-10">
       <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-neutral-4)' }} />
       <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-neutral-7)' }}>{label}</span>
@@ -1947,6 +2000,7 @@ function SearchResultsColumn({
   onNavigateRoom: (roomId: string) => void
   onPickMessage: (roomId: string, messageId: string) => void
 }) {
+  const now = new Date()
   const peopleResults = q ? rooms.filter((r) => r.type === 'dm' && r.person && r.person.name.toLowerCase().includes(q)) : []
   // Chatroom tab 只收 group chatroom(含 Teams 匯入房)— DM 屬「人」,歸 People tab,
   // 不重複出現在 Chatroom tab(2026-07-06 user 指定)
@@ -2025,7 +2079,7 @@ function SearchResultsColumn({
                 </div>
                 <p className="truncate" style={{ fontSize: 13, color: 'var(--color-neutral-8)' }}>{message.text}</p>
               </div>
-              <span className="shrink-0" style={{ fontSize: 11, color: 'var(--color-neutral-6)' }}>{message.time}</span>
+              <span className="shrink-0" style={{ fontSize: 11, color: 'var(--color-neutral-6)' }}>{formatListTime(message, now)}</span>
             </button>
           )
         }) : <NoSearchResults />)}

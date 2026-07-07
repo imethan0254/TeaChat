@@ -175,6 +175,8 @@ Conversation
     └── ThreadInputBox        含 "Also send to chatroom" checkbox；圓角 rounded-lg(8px)；Send 按鈕 24×24 + 無值 text / 有值 primary（與主 InputBox 同規則）（ThreadPanel 容器無 `border-l`，視覺分隔線由 ResizeHandle 1px line 提供）；**可發送**（Enter 或 Send 鈕，`onSend(text, alsoSend)` 上拋至 App `handleThreadSend`）
 ```
 
+> **Chat bubble 時間顯示（2026-07-06 confirmed，AM/PM 制）**：所有 chat bubble 內時間一律經 `formatBubbleTime(m, now)` 顯示（我方 / 對方 / thread panel / thread reply link「最新回覆時間」共 5 處）。規則：今天 `hh:mm AM/PM`（如 `9:18 AM`）· 昨天 `Yesterday hh:mm AM/PM` · 本週其他天（同一 ISO 週，排除今昨）`Monday hh:mm AM/PM` · 今年較早 `mm/dd hh:mm AM/PM`（`05/28 3:20 PM`）· 非今年 `yyyy/mm/dd hh:mm AM/PM`（`2025/05/26 6:10 PM`）。時間點由 `msgDateTime` = `message.date`（缺→今天）+ `message.time`（正規化為 HH:MM 24h）組成；`fmtHM12` 轉 12 小時 AM/PM。ChatList RoomRow 與搜尋結果的時間走 `formatListTime`（簡短版：今天顯示時間、其餘顯示相對日期/星期，對齊 Teams/Slack 列表慣例）。所有 demo `message.time` 已正規化為 HH:MM（原 `'5/28'` 之類日期字串改為實際時分 + 補完整 `date`）。
+
 > **未讀標記 + Last read / 日期分隔線（2026-06-25 confirmed）**：
 > - **點擊未讀 RoomRow 轉已讀**：`App.handleSelectRoom` 點擊非當前 room 時，若該 room `unread===true`，在 `setRooms` 標記 `unread:false` 之前，先把它最後一則訊息的 id 存進 `lastReadDivider = { roomId, messageId }`；點擊已讀 room 則清空 `lastReadDivider`。換 room 即清掉上個 room 的標記，所以**離開後再回來不會再看到這條線**（state 只認「這次切換」，不持久化）。
 > - **Last read divider**：`MessageArea` 收 `lastReadMessageId` prop（= `lastReadDivider` 命中當前 room 時的 messageId），渲染時若該訊息 id 命中就在泡泡上方插入 `LastReadDivider`（純色線 `var(--color-primary)` + 置中文字 "Last read" 12px/500 同色）。
