@@ -1479,7 +1479,7 @@ function ReactionBar({ onOpenThread, mine, room, hideReplyInThread, onEdit }: { 
 
 // ── Edit composer — chat bubble 編輯狀態(Teams:More → Edit 後 bubble 變輸入框)──
 // 底部列:Rich editor toggle(開 = 上方浮出 format toolbar)+ 右側 ✓ 儲存 / ✕ 取消。
-// Enter 儲存、Shift+Enter 換行、Escape 取消(對齊 Teams edit box 行為)。
+// Enter 儲存(list 內 = 換 item)、Shift+Enter 換行、Escape 取消(2026-07-09 Enter 規則)。
 function EditMessageComposer({
   message,
   onSave,
@@ -1516,7 +1516,6 @@ function EditMessageComposer({
         ariaLabel="Edit message"
         initialHTML={message.html ?? textToHtml(message.text)}
         autoFocus
-        enterMode={rich ? 'newline' : 'send'}
         onSubmit={save}
         onEscape={onCancel}
         onHasContentChange={setHasValue}
@@ -2346,7 +2345,7 @@ function SearchModal({
 // multiline: textarea full-width on top, buttons row below.
 // Rich editor(Type 按鈕 toggle,對齊 Microsoft Teams format 模式):
 // - ON → compose box 展開:format toolbar 置頂(divider 分隔)+ contentEditable +
-//   按鈕列固定底部;Enter 換行、Ctrl/Cmd+Enter 或 Send 按鈕送出(Teams format 模式行為)
+//   按鈕列固定底部;Enter 直接送出(list 內 = 換 item)、Shift+Enter 換行(2026-07-09 Enter 規則)
 // - OFF ⇄ ON 切換時保留已輸入內容(Teams 同)
 function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: string, html?: string) => void }) {
   const [value, setValue] = useState('')
@@ -2436,7 +2435,6 @@ function InputBox({ fullWidth, onSend }: { fullWidth: boolean; onSend: (text: st
                 ariaLabel="Type a message"
                 initialHTML={textToHtml(value)}
                 autoFocus
-                enterMode="newline"
                 onSubmit={send}
                 onHasContentChange={setRichHasValue}
                 className="relative max-h-[190px] overflow-y-auto"
@@ -2489,7 +2487,8 @@ const THREAD_MIN = 320
 const THREAD_MAX = 720
 
 // Thread panel 輸入框 — Rich editor toggle 與主輸入框同款(Teams thread reply
-// compose 同樣有 format 按鈕;toolbar 置頂 + divider,Enter 換行 / Ctrl+Enter 送出)
+// compose 同樣有 format 按鈕;toolbar 置頂 + divider;Enter 直接送出(list 內 = 換 item)、
+// Shift+Enter 換行(2026-07-09 Enter 規則,與主輸入框一致)
 function ThreadInputBox({ onSend, onReply }: { onSend: (text: string, alsoSend: boolean, html?: string) => void; onReply?: () => void }) {
   const [value, setValue] = useState('')
   const [alsoSend, setAlsoSend] = useState(true)
@@ -2548,7 +2547,6 @@ function ThreadInputBox({ onSend, onReply }: { onSend: (text: string, alsoSend: 
               ariaLabel="Reply in thread"
               initialHTML={textToHtml(value)}
               autoFocus
-              enterMode="newline"
               onSubmit={send}
               onHasContentChange={setRichHasValue}
               className="relative max-h-32 overflow-y-auto"

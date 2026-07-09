@@ -10,7 +10,10 @@ import App from './App'
 //   Strikethrough │ Bulleted list / Numbered list │ Text highlight color /
 //   Font color / Font size │ Insert link / More(Quote / Code snippet /
 //   Horizontal rule / Clear all formatting)
-// - Format 模式 Enter 換行,Ctrl/Cmd+Enter 或 Send 送出(Teams 行為)
+// - Enter 規則(2026-07-09):Enter 直接送出(list 內 = 換 item)、Shift+Enter 換行
+// - 鍵盤清單捷徑:「-」/「*」+空白 → bulleted list;「1.」+空白 → numbered list
+// - Link:右鍵 → Edit link / Remove link;Insert link dialog 走 DS Field 規範
+//   (必填 * 前綴 + URL 驗證「Please input valid URL」)
 const meta: Meta<typeof App> = {
   title: 'Apps/chat/TeaChat Desktop version',
   component: App,
