@@ -22,7 +22,7 @@ App  (export default)
     └── SettingsModal           overlay，由 NavRail more → Settings 開啟
 ```
 
-Storybook stories（Chat folder）：`Apps/chat/Chat`（`Chat.stories.tsx`，base）/ `Apps/chat/Teams Integration`（`TeamsChat.stories.tsx`）/ `Apps/chat/TeaChat Desktop version`（`TeaChatDesktop.stories.tsx`，2026-07-09 new — 獨立 prototype，桌面版 3-column 基底,重點展示 Teams 風格 Rich editor,見「Rich editor」callout）。
+Storybook stories（Chat folder）：`Apps/chat/Chat`（`Chat.stories.tsx`，base）/ `Apps/chat/Teams Integration`（`TeamsChat.stories.tsx`）/ `Apps/chat/TeaChat Desktop version`（`TeaChatDesktop.stories.tsx`，2026-07-09 new — 獨立 prototype，重點展示 Teams 風格 Rich editor,見「Rich editor」callout；**2026-07-12 結構改版**：config `{ chrome: 'top-search', initialShowPreview: false }`，對齊「Teams 整合」的 top-search chrome — 無 NavRail、頂部 universal search、preview 預設 OFF；**不注入 Teams 匯入房**（保留 base rooms，Teams 匯入房是「Teams 整合」demo 的內容主題）。）。
 
 `config.chrome === 'top-search'`（Teams 整合 prototype，story `Apps/chat/Teams Integration`，檔案 `TeamsChat.stories.tsx`；story config 另帶 `initialShowPreview: false` — chat message preview 預設 OFF，2026-07-06 user 指定）時改為：
 
