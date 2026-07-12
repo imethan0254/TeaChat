@@ -105,7 +105,7 @@
 - 驗證時機:點主按鈕 Insert / Save(或 URL 欄 Enter)時。
 - 合法:`http(s)://` 開頭之合法 URL;無 protocol 者自動補 `https://` 後驗證(hostname 需含 `.` 或為 `localhost`);`mailto:local@domain.tld`。
 - 不合法(例:`not a url`、含空白、`abc`)→ URL 欄位轉 error 狀態 + 欄位下方 FieldError 顯示 **`Invalid URL`**;dialog 不關閉。
-- **error 顏色遵照 design system 規範**:輸入框邊框走 `border-error`(且**聚焦時仍維持 error 色**,不被 focus 藍蓋掉),錯誤訊息走 `text-error-text` —— 皆由 DS `Field invalid` + `FieldError` 提供,**不自訂顏色**。
+- **error 顏色遵照 design system 規範**:輸入框邊框走 `border-error`(= DS `--error`,deep-orange-6;且**聚焦時仍維持 error 色**,不被 focus 藍蓋掉);錯誤訊息**與邊框同色**,用 DS `--error`(覆寫 FieldError 預設的 `--error-text`/deep-orange-7 —— 該 token 為「淺橘底上的深色文字」設計,放白底當錯誤訊息偏暗、不夠紅)。皆消費 DS 語意 error token,**不自訂 hex**。
 - 使用者修改 URL 內容 → error 即時清除。
 
 ### 6.4 插入行為(P0)
@@ -156,7 +156,7 @@
 2. **Given** 同上,**When** 行首輸入 `1.` + 空白,**Then** 立即出現編號清單第一項。
 3. **Given** 游標在清單項內,**When** 按 Enter,**Then** 產生下一項且訊息**未送出**;**When** 於空項再按 Enter,**Then** 跳出清單。
 4. **Given** 句中輸入 `-` + 空白(非行首),**Then** 不轉清單。
-5. **Given** Insert link dialog、URL 填 `not a url`,**When** 按 `Insert`,**Then** URL 欄顯示 DS error 邊框 + `Invalid URL`(`text-error-text`)、dialog 不關閉。
+5. **Given** Insert link dialog、URL 填 `not a url`,**When** 按 `Insert`,**Then** URL 欄顯示 DS error 邊框 + `Invalid URL`(文字色 = DS `--error`,與紅框同色)、dialog 不關閉。
 6. **Given** URL 填 `teachat.app/docs`,**When** 按 `Insert`,**Then** 編輯區游標處出現 `https://teachat.app/docs` 連結、焦點回編輯區。
 7. **Given** 剛送出一則訊息(編輯區已清空)且未點擊編輯區,**When** 直接開 Insert link 並按 `Insert`,**Then** 連結仍成功出現(不得靜默失敗)。
 8. **Given** 編輯區內連結,**When** 右鍵 → Edit link 改 URL 後按 `Save`,**Then** 連結原地更新;**When** 右鍵 → Remove link,**Then** 變純文字。

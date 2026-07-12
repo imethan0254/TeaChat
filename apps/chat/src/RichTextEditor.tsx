@@ -526,7 +526,10 @@ function InsertLinkDialog({
                 aria-label="URL"
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirm() } }}
               />
-              {urlError && <FieldError>Invalid URL</FieldError>}
+              {/* FieldError 預設 text-error-text = deep-orange-7(暗、給淺橘底用),
+                  放白底當錯誤訊息偏暗不像紅 → 覆寫為 --error(= border-error 同 token,
+                  deep-orange-6),讓訊息與紅框同色、清楚可辨。仍走 DS 語意 error token。 */}
+              {urlError && <FieldError style={{ color: 'var(--error)' }}>Invalid URL</FieldError>}
             </Field>
           </div>
         </DialogBody>
