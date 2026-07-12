@@ -319,6 +319,7 @@ export const RichTextArea = forwardRef<RichEditorHandle, {
         open={editLinkOpen}
         onOpenChange={setEditLinkOpen}
         title="Edit link"
+        confirmLabel="Save"
         initialText={targetAnchor.current?.textContent ?? ''}
         initialUrl={targetAnchor.current?.getAttribute('href') ?? ''}
         onConfirm={(text, url) => {
@@ -458,12 +459,13 @@ const FONT_SIZES: { key: FontSizeKey; label: string; execValue: string; px: numb
 // ── Insert / Edit link dialog(Teams:Text to display + URL)─────────────────
 // DS 規範消費(2026-07-09):DialogHeader / DialogBody / DialogFooter(水平 padding
 // 由 DS Dialog surface 提供,不手刻)+ Field / FieldLabel(required 前綴 *)/ FieldError。
-// 兩欄皆必填;URL 非 link 格式 → FieldError「Please input valid URL」(confirm 時驗證,
-// 修改內容即清除)。
+// 兩欄皆必填;URL 非 link 格式 → FieldError「Invalid URL」(confirm 時驗證,修改內容即清除)。
+// error 色由 DS Field 規範提供:Input `border-error`(focus 時仍紅)+ FieldError `text-error-text`。
 function InsertLinkDialog({
   open,
   onOpenChange,
   title,
+  confirmLabel,
   initialText,
   initialUrl = '',
   onConfirm,
@@ -473,6 +475,8 @@ function InsertLinkDialog({
   onOpenChange: (v: boolean) => void
   /** 'Insert link'(toolbar 插入)/ 'Edit link'(右鍵選單編輯)。 */
   title: string
+  /** 主按鈕文案:insert → 'Insert';edit → 'Save'。 */
+  confirmLabel: string
   initialText: string
   initialUrl?: string
   onConfirm: (text: string, url: string) => void
@@ -522,13 +526,13 @@ function InsertLinkDialog({
                 aria-label="URL"
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirm() } }}
               />
-              {urlError && <FieldError>Please input valid URL</FieldError>}
+              {urlError && <FieldError>Invalid URL</FieldError>}
             </Field>
           </div>
         </DialogBody>
         <DialogFooter>
           <Button variant="text" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="primary" disabled={!canConfirm} onClick={confirm}>Confirm</Button>
+          <Button variant="primary" disabled={!canConfirm} onClick={confirm}>{confirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -682,6 +686,7 @@ export function FormatToolbar({ editorRef }: { editorRef: React.RefObject<RichEd
         open={linkOpen}
         onOpenChange={setLinkOpen}
         title="Insert link"
+        confirmLabel="Insert"
         initialText={linkInitialText}
         onCloseFocus={restoreSelection}
         onConfirm={(text, url) => {

@@ -97,19 +97,20 @@
 | 標題 | `Insert link`(編輯模式時 `Edit link`) |
 | 欄位 1 | `Text to display` — **必填**,label 前綴 `*`(DS Field `required` 機制);純文字輸入 |
 | 欄位 2 | `URL` — **必填**,label 前綴 `*`;placeholder `https://` |
-| 按鈕 | `Cancel`(text variant)/ `Confirm`(primary)— **兩欄皆有值才 enable** |
-| URL 欄按 Enter | 等同點 Confirm |
+| 按鈕 | `Cancel`(text variant)/ 主按鈕(primary):Insert link 顯示 `Insert`、Edit link 顯示 `Save` — **兩欄皆有值才 enable** |
+| URL 欄按 Enter | 等同點主按鈕(Insert / Save) |
 
 ### 6.3 URL 驗證(P0)
 
-- 驗證時機:點 Confirm(或 URL 欄 Enter)時。
+- 驗證時機:點主按鈕 Insert / Save(或 URL 欄 Enter)時。
 - 合法:`http(s)://` 開頭之合法 URL;無 protocol 者自動補 `https://` 後驗證(hostname 需含 `.` 或為 `localhost`);`mailto:local@domain.tld`。
-- 不合法(例:`not a url`、含空白、`abc`)→ URL 欄位轉 error 狀態(紅框)+ 欄位下方 FieldError 顯示 **`Please input valid URL`**;dialog 不關閉。
+- 不合法(例:`not a url`、含空白、`abc`)→ URL 欄位轉 error 狀態 + 欄位下方 FieldError 顯示 **`Invalid URL`**;dialog 不關閉。
+- **error 顏色遵照 design system 規範**:輸入框邊框走 `border-error`(且**聚焦時仍維持 error 色**,不被 focus 藍蓋掉),錯誤訊息走 `text-error-text` —— 皆由 DS `Field invalid` + `FieldError` 提供,**不自訂顏色**。
 - 使用者修改 URL 內容 → error 即時清除。
 
 ### 6.4 插入行為(P0)
 
-1. Confirm 後 dialog 關閉,**焦點回到編輯區**(不得落回工具列按鈕或 body)。
+1. 主按鈕(Insert / Save)後 dialog 關閉,**焦點回到編輯區**(不得落回工具列按鈕或 body)。
 2. 連結插入於**開啟 dialog 當下的游標/選取位置**;游標位置已失效(如剛送出訊息、編輯區被清空)→ 插入於內容最尾端。**任何情況下插入不得靜默失敗**。
 3. 產出 `<a href="<正規化後 URL>" target="_blank" rel="noreferrer">顯示文字</a>`;顯示文字與 URL 需做 HTML escape。
 4. 編輯區與 bubble 中連結渲染:primary 色 + underline(`.rich-text a`)。
@@ -117,7 +118,7 @@
 ### 6.5 連結右鍵選單(P0)
 
 - 在**編輯區內**右鍵點擊連結 → 於滑鼠座標開啟 context menu(取代瀏覽器原生選單),兩個選項**皆含 icon**:
-  - **Edit link**(Pencil icon):重開同一 dialog(標題 `Edit link`),「Text to display」「URL」帶入現值;Confirm 後**原地改寫**該連結的顯示文字與 href(驗證規則同 6.3)。
+  - **Edit link**(Pencil icon):重開同一 dialog(標題 `Edit link`,主按鈕 `Save`),「Text to display」「URL」帶入現值;按 `Save` 後**原地改寫**該連結的顯示文字與 href(驗證規則同 6.3)。
   - **Remove link**(Unlink icon):連結解除,顯示文字轉為**純文字**(內容保留、樣式移除)。
 - 範圍界定:右鍵選單只作用於**輸入框內**的連結(含 bubble 編輯狀態的輸入框);已送出 bubble 內的連結不掛此選單(修改需走該訊息的 Edit 流程)。
 
@@ -155,10 +156,10 @@
 2. **Given** 同上,**When** 行首輸入 `1.` + 空白,**Then** 立即出現編號清單第一項。
 3. **Given** 游標在清單項內,**When** 按 Enter,**Then** 產生下一項且訊息**未送出**;**When** 於空項再按 Enter,**Then** 跳出清單。
 4. **Given** 句中輸入 `-` + 空白(非行首),**Then** 不轉清單。
-5. **Given** Insert link dialog、URL 填 `not a url`,**When** 按 Confirm,**Then** 顯示紅框 + `Please input valid URL`、dialog 不關閉。
-6. **Given** URL 填 `teachat.app/docs`,**When** Confirm,**Then** 編輯區游標處出現 `https://teachat.app/docs` 連結、焦點回編輯區。
-7. **Given** 剛送出一則訊息(編輯區已清空)且未點擊編輯區,**When** 直接 Insert link 並 Confirm,**Then** 連結仍成功出現(不得靜默失敗)。
-8. **Given** 編輯區內連結,**When** 右鍵 → Edit link 改 URL 後 Confirm,**Then** 連結原地更新;**When** 右鍵 → Remove link,**Then** 變純文字。
+5. **Given** Insert link dialog、URL 填 `not a url`,**When** 按 `Insert`,**Then** URL 欄顯示 DS error 邊框 + `Invalid URL`(`text-error-text`)、dialog 不關閉。
+6. **Given** URL 填 `teachat.app/docs`,**When** 按 `Insert`,**Then** 編輯區游標處出現 `https://teachat.app/docs` 連結、焦點回編輯區。
+7. **Given** 剛送出一則訊息(編輯區已清空)且未點擊編輯區,**When** 直接開 Insert link 並按 `Insert`,**Then** 連結仍成功出現(不得靜默失敗)。
+8. **Given** 編輯區內連結,**When** 右鍵 → Edit link 改 URL 後按 `Save`,**Then** 連結原地更新;**When** 右鍵 → Remove link,**Then** 變純文字。
 9. **Given** 清單訊息送出,**Then** bubble 內圓點/編號渲染與編輯區一致。
 10. **Given** 全選刪除輸入框所有內容,**Then** 下一次輸入為一般段落(不殘留清單結構)、Send 鈕回到無值狀態。
 
