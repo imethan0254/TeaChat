@@ -92,6 +92,36 @@ export function hasRichMarkup(html: string): boolean {
 function ensureProtocol(url: string): string {
   return /^(https?|mailto):/i.test(url) ? url : `https://${url}`
 }
+
+// 貼上時把純文字裡的 URL 轉成可點擊 <a>(2026-07-12 user 指定,三處輸入框皆適用)。
+// 匹配 http(s):// 或 www. 開頭的 URL(對齊 Teams / Slack autolink 慣例:需 protocol 或
+// www,避免把 "e.g."、"3.14" 等誤判成連結)。anchor 顯示文字 = 原樣 URL,因此右鍵
+// Edit link 時「Text to display」自然就是該 URL。尾端標點(.,;:!?)]}'")不納入連結。
+const AUTOLINK_RE = /(?:https?:\/\/|www\.)[^\s<]+/gi
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+function linkifyToHtml(text: string): string {
+  let out = ''
+  let last = 0
+  for (const m of text.matchAll(AUTOLINK_RE)) {
+    const raw = m[0]
+    const idx = m.index ?? 0
+    // 剝掉尾端標點(常見於句尾「…see https://x.com.」)
+    const trailMatch = /[.,;:!?)\]}'"]+$/.exec(raw)
+    const url = trailMatch ? raw.slice(0, trailMatch.index) : raw
+    const trail = trailMatch ? raw.slice(trailMatch.index) : ''
+    out += escHtml(text.slice(last, idx))
+    const href = ensureProtocol(url)
+    out += `<a href="${escHtml(href)}" target="_blank" rel="noreferrer">${escHtml(url)}</a>${escHtml(trail)}`
+    last = idx + raw.length
+  }
+  out += escHtml(text.slice(last))
+  return out.replace(/\n/g, '<br>')
+}
+function textHasUrl(text: string): boolean {
+  return new RegExp(AUTOLINK_RE.source, 'i').test(text)
+}
 // URL 格式驗證(2026-07-09 user 指定:非 link 格式 → error「Please input valid URL」)
 // 接受 http(s)://host.tld… / host.tld…(自動補 https)/ localhost / mailto:a@b.c
 function isValidUrl(raw: string): boolean {
@@ -259,9 +289,30 @@ export const RichTextArea = forwardRef<RichEditorHandle, {
             setLinkMenu({ x: e.clientX, y: e.clientY })
           }
         }}
+        onPaste={(e) => {
+          // 貼上含 URL 的純文字 → 自動把 URL 轉成可點擊 <a>(其餘文字原樣保留)。
+          // 無 URL 時不攔截,維持瀏覽器原生貼上行為(純文字 / rich 貼上不受影響)。
+          const text = e.clipboardData?.getData('text/plain') ?? ''
+          if (text && textHasUrl(text)) {
+            e.preventDefault()
+            document.execCommand('insertHTML', false, linkifyToHtml(text))
+            syncEmpty()
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             onEscape?.()
+            return
+          }
+          if (e.key === 'Tab' && !e.nativeEvent.isComposing) {
+            // 巢狀清單(2026-07-12 user 指定):caret 在 list item 內 → Tab 縮排(indent
+            // = 加一層巢狀清單)、Shift+Tab 取消縮排(outdent)。非清單情境不攔截,Tab
+            // 維持原生焦點移動。
+            if (caretInListItem()) {
+              e.preventDefault()
+              document.execCommand(e.shiftKey ? 'outdent' : 'indent')
+              syncEmpty()
+            }
             return
           }
           if (e.key === 'Backspace' || e.key === 'Delete') {

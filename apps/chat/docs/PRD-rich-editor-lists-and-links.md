@@ -56,8 +56,16 @@
 | Enter(游標在清單項內) | 產生**下一個清單項**(不送出訊息) |
 | Enter(游標在**空**清單項) | 跳出清單,回到一般段落(瀏覽器原生行為) |
 | Shift+Enter | 清單項內換行(同項第二行) |
+| **Tab(游標在清單項內)** | **縮排 → 建立巢狀子清單**(indent);非清單情境不攔截,Tab 維持原生焦點移動 |
+| **Shift+Tab(游標在清單項內)** | **取消縮排**(outdent),回上一層 |
 | Backspace 至清單清空 | 清單結構解除;**全選刪除後不得留下看不見的空清單殘骸**(下一次輸入不得意外接在清單裡) |
 | 送出(Enter 於清單外 / Send 鈕 / Ctrl(Cmd)+Enter) | 訊息以 rich 內容送出,bubble 內以 disc 圓點渲染 |
+
+### 4.4 巢狀清單視覺(2026-07-12,對齊 Word / Teams)
+
+- 每縮排一層 `padding-left: 24px`;巢狀 list 不加上下 margin(緊貼母項)。
+- Bulleted 巢狀 bullet 隨層級變化:第 1 層 `disc`(●)→ 第 2 層 `circle`(○)→ 第 3 層以下 `square`(▪)。
+- 編輯區與已送出 bubble 用**同一份樣式**,所見即所得。
 
 ---
 
@@ -76,7 +84,7 @@
 
 ### 5.3 清單內編輯行為與視覺
 
-- 編輯行為同 4.3(Enter 下一項自動遞增編號、空項 Enter 跳出、全選刪除不留殘骸)。
+- 編輯行為同 4.3(Enter 下一項自動遞增編號、空項 Enter 跳出、全選刪除不留殘骸、**Tab/Shift+Tab 縮排/取消縮排建立巢狀清單**,見 4.3 / 4.4)。
 - `ol`:`list-style: decimal`、`padding-left: 24px`、上下 margin 2px。
 - Bulleted 與 numbered 互斥:游標在 bulleted list 內按「Numbered list」→ 轉為編號清單(反之亦然)。
 
@@ -122,6 +130,13 @@
   - **Remove link**(Unlink icon):連結解除,顯示文字轉為**純文字**(內容保留、樣式移除)。
 - 範圍界定:右鍵選單只作用於**輸入框內**的連結(含 bubble 編輯狀態的輸入框);已送出 bubble 內的連結不掛此選單(修改需走該訊息的 Edit 流程)。
 
+### 6.6 貼上自動轉連結(paste auto-link,2026-07-12 user 指定,P0)
+
+- **三處輸入框**皆適用:貼上的純文字若含 URL,**自動把 URL 轉為可點擊 `<a>`**,其餘文字原樣保留;URL 之間 / 前後的一般文字不受影響。
+- 匹配範圍:`http(s)://…` 或 `www.…` 開頭(對齊 Teams / Slack autolink 慣例 —— 需 protocol 或 `www`,避免把 `e.g.`、`3.14` 等誤判);`www.` 開頭自動補 `https://` 為 href。URL 尾端標點(`. , ; : ! ? ) ] } ' "`)不納入連結。
+- **無 URL 的貼上不攔截**,維持瀏覽器原生貼上(純文字 / 一般內容不受影響)。
+- auto-link 的 anchor **顯示文字 = 原樣 URL**,因此右鍵 → **Edit link** 時「Text to display」欄位**直接就是該 URL**(與 6.5 共用同一右鍵選單與 dialog);Remove link 亦可用。
+
 ---
 
 ## 7. 跨功能通用規則
@@ -162,12 +177,15 @@
 8. **Given** 編輯區內連結,**When** 右鍵 → Edit link 改 URL 後按 `Save`,**Then** 連結原地更新;**When** 右鍵 → Remove link,**Then** 變純文字。
 9. **Given** 清單訊息送出,**Then** bubble 內圓點/編號渲染與編輯區一致。
 10. **Given** 全選刪除輸入框所有內容,**Then** 下一次輸入為一般段落(不殘留清單結構)、Send 鈕回到無值狀態。
+11. **Given** 游標在清單項內,**When** 按 Tab,**Then** 該項縮排成巢狀子清單(bullet 由 disc → circle);**When** 按 Shift+Tab,**Then** 回上一層。
+12. **Given** 任一輸入框,**When** 貼上 `check https://teachat.app/docs please`,**Then** URL 轉為可點擊連結、前後文字「check … please」保留。
+13. **Given** 貼上產生的連結,**When** 右鍵 → Edit link,**Then**「Text to display」與「URL」皆為該 URL;**When** Remove link,**Then** 變純文字。
+14. **Given** 貼上不含 URL 的純文字,**Then** 不產生連結(維持原生貼上)。
 
 ## 9. Out of scope(本期不做)
 
-- 巢狀清單(Tab / Shift+Tab 縮排)
 - 清單起始編號自訂(輸入 `3.` 從 3 起算)
 - 已送出 bubble 內連結的右鍵選單、連結 hover preview 卡片
-- 貼上 URL 自動轉連結(auto-link on paste)
+- 貼上「非 URL 純文字中夾帶的裸網域」(如 `teachat.app` 無 protocol / www)自動轉連結
 - Markdown 其他捷徑(`#` 標題、`>` 引用等)
 

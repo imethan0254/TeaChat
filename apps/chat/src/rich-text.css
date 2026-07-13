@@ -26,6 +26,20 @@
   padding-left: 24px;
   margin: 2px 0;
 }
+/* 巢狀清單(Tab 縮排,2026-07-12):bullet 隨層級變化(對齊 Word / Teams:
+   disc → circle → square),巢狀 list 不再加上下 margin(緊貼母項)。 */
+.rich-text ul ul,
+.rich-text ol ul,
+.rich-text ul ol,
+.rich-text ol ol {
+  margin: 0;
+}
+.rich-text ul ul {
+  list-style: circle;
+}
+.rich-text ul ul ul {
+  list-style: square;
+}
 .rich-text blockquote {
   border-left: 3px solid var(--color-neutral-4);
   padding-left: 8px;
