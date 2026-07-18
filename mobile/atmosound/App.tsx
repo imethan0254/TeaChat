@@ -128,7 +128,7 @@ function Main() {
           void onMapPress(latitude, longitude);
         }}
         userInterfaceStyle={phase === 'night' || phase === 'dusk' ? 'dark' : 'light'}
-        showsPointsOfInterests={false}
+        showsPointsOfInterest={false}
         toolbarEnabled={false}
       />
 
