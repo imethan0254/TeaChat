@@ -1,6 +1,6 @@
-# AtmoSound 🌦️🎧
+# Rainland(雨之國)🌧️🎧
 
-> Every Thought Has A Note — 環境天氣白噪音生成 App(React Native + Expo)
+> Every rain has a note — 只聽雨的環境音 App(React Native + Expo)。連接世界各地即時降雨:預設自動鎖定你國家正在下雨的地區(沒有則找鄰近國家),七級雨勢驅動動畫與聲音層次,預設英文、可切繁中。
 
 結合真實世界地理位置與即時天氣數據的環境音 App:選世界任一城市,即刻「置身」當地氣候場景 —— 介面隨當地時間變換日夜色調,環境音隨當地真實天氣(降雨量、風速、雷雨)動態生成。
 

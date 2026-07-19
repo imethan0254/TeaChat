@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { makeT } from '../i18n/strings';
 import type { Palette } from '../lib/theme';
 import { useApp } from '../state/store';
 import { BottomSheet } from './BottomSheet';
@@ -11,14 +12,15 @@ interface Props {
 }
 
 const PRESETS = [
-  { label: '30 分鐘', min: 30 },
-  { label: '1 小時', min: 60 },
-  { label: '2 小時', min: 120 },
-];
+  { labelKey: 'min30', min: 30 },
+  { labelKey: 'hour1', min: 60 },
+  { labelKey: 'hour2', min: 120 },
+] as const;
 
 /** 專注計時器(PRD v2 §3.5):endsAt 絕對時間戳,到點 10 秒淡出 */
 export function TimerSheet({ visible, onClose, palette }: Props) {
-  const { timerEndsAt, timerFading, setTimer } = useApp();
+  const { lang, timerEndsAt, timerFading, setTimer } = useApp();
+  const t = makeT(lang);
   const [custom, setCustom] = useState('');
   const [, tick] = useState(0);
 
@@ -41,21 +43,19 @@ export function TimerSheet({ visible, onClose, palette }: Props) {
 
   return (
     <BottomSheet visible={visible} onClose={onClose} palette={palette}>
-      <Text style={[styles.title, { color: palette.text }]}>專注計時器</Text>
-      <Text style={[styles.subtitle, { color: palette.subtext }]}>
-        倒數結束後聲音將以 10 秒逐漸淡出停止
-      </Text>
+      <Text style={[styles.title, { color: palette.text }]}>{t('timerTitle')}</Text>
+      <Text style={[styles.subtitle, { color: palette.subtext }]}>{t('timerSubtitle')}</Text>
 
       {remaining !== null && (
         <View style={styles.activeBox}>
           <Text style={[styles.countdown, { color: palette.accent }]}>{fmt(remaining)}</Text>
           <Pressable onPress={() => setTimer(null)}>
-            <Text style={[styles.cancel, { color: palette.subtext }]}>取消計時</Text>
+            <Text style={[styles.cancel, { color: palette.subtext }]}>{t('cancelTimer')}</Text>
           </Pressable>
         </View>
       )}
       {timerFading && (
-        <Text style={[styles.subtitle, { color: palette.accent }]}>淡出中…</Text>
+        <Text style={[styles.subtitle, { color: palette.accent }]}>{t('fadingOut')}</Text>
       )}
 
       <View style={styles.presetRow}>
@@ -68,7 +68,7 @@ export function TimerSheet({ visible, onClose, palette }: Props) {
               onClose();
             }}
           >
-            <Text style={[styles.presetText, { color: palette.accent }]}>{p.label}</Text>
+            <Text style={[styles.presetText, { color: palette.accent }]}>{t(p.labelKey)}</Text>
           </Pressable>
         ))}
       </View>
@@ -76,7 +76,7 @@ export function TimerSheet({ visible, onClose, palette }: Props) {
       <View style={styles.customRow}>
         <TextInput
           style={[styles.input, { color: palette.text, borderColor: palette.panelBorder }]}
-          placeholder="自訂分鐘數"
+          placeholder={t('customMinutes')}
           placeholderTextColor={palette.subtext}
           keyboardType="number-pad"
           value={custom}
@@ -93,7 +93,7 @@ export function TimerSheet({ visible, onClose, palette }: Props) {
             }
           }}
         >
-          <Text style={styles.customBtnText}>開始</Text>
+          <Text style={styles.customBtnText}>{t('start')}</Text>
         </Pressable>
       </View>
     </BottomSheet>

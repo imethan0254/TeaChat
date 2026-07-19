@@ -18,10 +18,9 @@ export function formatLocalTime(utcOffsetSeconds: number): string {
   return `${hh}:${mm}`;
 }
 
-export function formatLocalDate(utcOffsetSeconds: number): string {
+export function formatLocalDate(utcOffsetSeconds: number, weekdays: readonly string[]): string {
   const d = localDate(utcOffsetSeconds);
-  const wd = ['日', '一', '二', '三', '四', '五', '六'][d.getUTCDay()];
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} 週${wd}`;
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${weekdays[d.getUTCDay()]}`;
 }
 
 /** PRD v2 §4:dawn 05–08 / day 08–17 / dusk 17–20 / night 20–05 */
@@ -90,9 +89,10 @@ export const PALETTES: Record<DayPhase, Palette> = {
   },
 };
 
-export const PHASE_LABEL: Record<DayPhase, string> = {
-  dawn: '清晨',
-  day: '白晝',
-  dusk: '黃昏',
-  night: '夜晚',
-};
+/** i18n key per phase(文案走 strings.ts) */
+export const PHASE_KEY = {
+  dawn: 'phaseDawn',
+  day: 'phaseDay',
+  dusk: 'phaseDusk',
+  night: 'phaseNight',
+} as const;

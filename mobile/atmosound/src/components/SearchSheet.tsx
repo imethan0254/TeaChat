@@ -8,8 +8,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { makeT } from '../i18n/strings';
 import { searchCities } from '../lib/api';
 import type { Palette } from '../lib/theme';
+import { useApp } from '../state/store';
 import type { GeoResult } from '../types';
 import { BottomSheet } from './BottomSheet';
 
@@ -22,6 +24,8 @@ interface Props {
 
 /** 地點搜尋(Open-Meteo Geocoding,支援中文,免金鑰) */
 export function SearchSheet({ visible, onClose, onPick, palette }: Props) {
+  const { lang } = useApp();
+  const t = makeT(lang);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeoResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +37,7 @@ export function SearchSheet({ visible, onClose, onPick, palette }: Props) {
     setLoading(true);
     setError(false);
     try {
-      setResults(await searchCities(q));
+      setResults(await searchCities(q, lang));
     } catch {
       setError(true);
     } finally {
@@ -43,10 +47,10 @@ export function SearchSheet({ visible, onClose, onPick, palette }: Props) {
 
   return (
     <BottomSheet visible={visible} onClose={onClose} palette={palette}>
-      <Text style={[styles.title, { color: palette.text }]}>探索世界</Text>
+      <Text style={[styles.title, { color: palette.text }]}>{t('searchTitle')}</Text>
       <TextInput
         style={[styles.input, { color: palette.text, borderColor: palette.panelBorder }]}
-        placeholder="輸入城市名稱,如:東京、Reykjavik…"
+        placeholder={t('searchPlaceholder')}
         placeholderTextColor={palette.subtext}
         value={query}
         onChangeText={setQuery}
@@ -56,7 +60,7 @@ export function SearchSheet({ visible, onClose, onPick, palette }: Props) {
       />
       {loading && <ActivityIndicator style={{ marginTop: 16 }} color={palette.accent} />}
       {error && (
-        <Text style={[styles.hint, { color: palette.subtext }]}>搜尋失敗,請檢查網路後重試</Text>
+        <Text style={[styles.hint, { color: palette.subtext }]}>{t('searchFailed')}</Text>
       )}
       <FlatList
         data={results}

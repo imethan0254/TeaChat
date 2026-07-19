@@ -196,4 +196,39 @@ while pos < DUR + 1.5:
     pos += rng.uniform(0.6, 2.2)
 save("keyboard", norm(loopify(kb), 0.7))
 
+
+# ═══ Rainland 7 級雨勢新增音軌(mist/drips/medium/downpour/storm-wind)═══
+
+N = (DUR + 2) * SR
+
+# ── L1 絲絲細雨 rain-mist:極輕的高頻霧狀 hiss,幾乎無滴答 ──
+mist = hp(white(N), 3000) * 0.10
+mist *= slow_lfo(N, 0.08, 0.35, 1.0)
+veil = bp(white(N), 1200, 4000) * 0.05 * slow_lfo(N, 0.15, 0.4, 0.9)
+save("rain-mist", norm(loopify(mist + veil), 0.55))
+
+# ── L2 淅瀝小雨 rain-drips:錯落滴答為主,底噪極薄 ──
+drips = droplets(N, 9, 1200, 6000, 0.016) * 0.9
+base = bp(white(N), 900, 7000) * 0.05 * slow_lfo(N, 0.12, 0.3, 1.0)
+save("rain-drips", norm(loopify(drips + base), 0.7))
+
+# ── L4 滂沱中雨 rain-medium:飽滿啪嗒 + 中等 wash ──
+wash = bp(white(N), 300, 9500) * 0.32 * slow_lfo(N, 0.12, 0.25, 1.0)
+patter = droplets(N, 50, 700, 6500, 0.014) * 0.5
+lowbody = lp(brown(N), 260) * 0.3
+save("rain-medium", norm(loopify(wash + patter + lowbody)))
+
+# ── L6-7 傾盆/豪雨 rain-downpour:密不透風的 roar + 重低頻 ──
+roar = bp(white(N), 150, 11000) * 0.6 * slow_lfo(N, 0.1, 0.18, 1.0)
+rumble = lp(brown(N), 200) * 0.7
+splat = droplets(N, 160, 500, 7000, 0.012) * 0.35
+save("rain-downpour", norm(loopify(roar + rumble + splat)))
+
+# ── 狂風 storm-wind:深沉陣風 + 呼嘯,給 L6-7 ──
+gust = lp(pink(N), 420) * slow_lfo(N, 0.16, 1.4, 0.85)
+howl = bp(pink(N), 700, 1400, 2) * slow_lfo(N, 0.11, 1.1, 0.55) * 0.4
+deep = lp(brown(N), 120) * 0.4 * slow_lfo(N, 0.09, 0.8, 0.8)
+save("storm-wind", norm(loopify(gust + howl + deep)))
+
+
 print("DONE")

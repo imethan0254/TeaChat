@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { WEATHER_LABEL, weatherEmoji } from '../lib/soundMap';
-import { formatLocalDate, formatLocalTime, PHASE_LABEL, type Palette } from '../lib/theme';
+import { makeT, RAIN_LEVEL_TEXT } from '../i18n/strings';
+import { weatherEmoji } from '../lib/rainLevels';
+import { formatLocalDate, formatLocalTime, PHASE_KEY, type Palette } from '../lib/theme';
 import { useApp } from '../state/store';
 import type { DayPhase } from '../types';
 
@@ -10,19 +11,21 @@ interface Props {
   phase: DayPhase;
 }
 
-/** 半透明天氣數據面板(PRD v2 §3.2):地名、當地時間(即時計算)、四項氣象數據、動態圖示 */
+/**
+ * 天氣面板:地名、當地時間、7 級雨勢名稱 + 情境描述(需求 4 文案)、四項氣象數據。
+ * 無雨時顯示引導(點「找雨」)。
+ */
 export function WeatherPanel({ palette, phase }: Props) {
-  const { location, weather, weatherError } = useApp();
+  const { lang, location, weather, weatherError, level, rainSearchNote, findingRain } = useApp();
+  const t = makeT(lang);
   const [, forceTick] = useState(0);
   const pulse = useRef(new Animated.Value(1)).current;
 
-  // 當地時間每 20 秒 tick 重算(不存死字串)
   useEffect(() => {
-    const t = setInterval(() => forceTick((n) => n + 1), 20_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => forceTick((n) => n + 1), 20_000);
+    return () => clearInterval(timer);
   }, []);
 
-  // 天氣圖示呼吸動畫
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -35,6 +38,7 @@ export function WeatherPanel({ palette, phase }: Props) {
   }, [pulse]);
 
   const staleMin = weather ? Math.round((Date.now() - weather.fetchedAt) / 60000) : 0;
+  const levelText = level > 0 ? RAIN_LEVEL_TEXT[level] : null;
 
   return (
     <View style={[styles.panel, { backgroundColor: palette.panel, borderColor: palette.panelBorder }]}>
@@ -44,31 +48,59 @@ export function WeatherPanel({ palette, phase }: Props) {
             {location.name}
           </Text>
           <Text style={[styles.time, { color: palette.subtext }]}>
-            {formatLocalDate(location.utcOffsetSeconds)} · {formatLocalTime(location.utcOffsetSeconds)}{' '}
-            {PHASE_LABEL[phase]}
+            {formatLocalDate(location.utcOffsetSeconds, t('weekdays'))} ·{' '}
+            {formatLocalTime(location.utcOffsetSeconds)} {t(PHASE_KEY[phase])}
           </Text>
         </View>
         <Animated.Text style={[styles.emoji, { transform: [{ scale: pulse }] }]}>
-          {weather ? weatherEmoji(weather.code, weather.isDay) : '🌍'}
+          {weather ? weatherEmoji(weather.code, weather.isDay) : '🌧️'}
         </Animated.Text>
       </View>
 
-      {weather ? (
+      {findingRain ? (
+        <Text style={[styles.levelName, { color: palette.accent, marginTop: 12 }]}>
+          {t('findingRain')}
+        </Text>
+      ) : weather ? (
         <>
+          {levelText ? (
+            <View style={styles.levelBlock}>
+              <View style={styles.levelHeader}>
+                <Text style={[styles.levelBadge, { color: palette.accent, borderColor: palette.accent }]}>
+                  {level} / 7
+                </Text>
+                <Text style={[styles.levelName, { color: palette.text }]}>
+                  {levelText.name[lang]}
+                </Text>
+              </View>
+              <Text style={[styles.levelDesc, { color: palette.subtext }]} numberOfLines={3}>
+                {levelText.desc[lang]}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.levelBlock}>
+              <Text style={[styles.levelName, { color: palette.text }]}>{t('noRainHere')}</Text>
+              <Text style={[styles.levelDesc, { color: palette.subtext }]}>{t('noRainHint')}</Text>
+            </View>
+          )}
+
+          {rainSearchNote === 'fallback' && (
+            <Text style={[styles.note, { color: palette.accent }]}>{t('noRainAnywhere')}</Text>
+          )}
+
           <View style={styles.dataRow}>
-            <Datum label="溫度" value={`${Math.round(weather.temp)}°`} palette={palette} />
-            <Datum label="降水" value={`${weather.precip} mm`} palette={palette} />
-            <Datum label="濕度" value={`${Math.round(weather.humidity)}%`} palette={palette} />
-            <Datum label="風速" value={`${Math.round(weather.wind)} km/h`} palette={palette} />
+            <Datum label={t('temp')} value={`${Math.round(weather.temp)}°`} palette={palette} />
+            <Datum label={t('precip')} value={`${weather.precip} mm`} palette={palette} />
+            <Datum label={t('humidity')} value={`${Math.round(weather.humidity)}%`} palette={palette} />
+            <Datum label={t('wind')} value={`${Math.round(weather.wind)} km/h`} palette={palette} />
           </View>
-          <Text style={[styles.condition, { color: palette.accent }]}>
-            {WEATHER_LABEL(weather.code)}
-            {weatherError && staleMin > 0 ? `(更新於 ${staleMin} 分鐘前)` : ''}
-          </Text>
+          {weatherError && staleMin > 0 && (
+            <Text style={[styles.note, { color: palette.subtext }]}>{t('updatedAgo')(staleMin)}</Text>
+          )}
         </>
       ) : (
-        <Text style={[styles.condition, { color: palette.subtext }]}>
-          {weatherError ? '無法取得天氣,將自動重試' : '取得天氣中…'}
+        <Text style={[styles.levelDesc, { color: palette.subtext, marginTop: 10 }]}>
+          {weatherError ? t('fetchFailed') : t('fetching')}
         </Text>
       )}
     </View>
@@ -86,17 +118,30 @@ function Datum({ label, value, palette }: { label: string; value: string; palett
 
 const styles = StyleSheet.create({
   panel: {
-    borderRadius: 24,
+    borderRadius: 26,
     borderWidth: 1,
     padding: 18,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   place: { fontSize: 24, fontWeight: '700', letterSpacing: 0.5 },
   time: { fontSize: 13, marginTop: 3 },
-  emoji: { fontSize: 44, marginLeft: 8 },
+  emoji: { fontSize: 42, marginLeft: 8 },
+  levelBlock: { marginTop: 12 },
+  levelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  levelBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    borderWidth: 1.2,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  levelName: { fontSize: 18, fontWeight: '700', letterSpacing: 0.4 },
+  levelDesc: { fontSize: 12, lineHeight: 18, marginTop: 6 },
+  note: { marginTop: 8, fontSize: 11, fontWeight: '600' },
   dataRow: { flexDirection: 'row', marginTop: 14 },
   datum: { flex: 1, alignItems: 'center' },
-  datumValue: { fontSize: 17, fontWeight: '600' },
+  datumValue: { fontSize: 16, fontWeight: '600' },
   datumLabel: { fontSize: 11, marginTop: 2 },
-  condition: { marginTop: 12, fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });

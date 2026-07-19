@@ -1,7 +1,12 @@
 export type TrackId =
+  | 'rain-mist'
+  | 'rain-drips'
   | 'rain-light'
+  | 'rain-medium'
   | 'rain-heavy'
+  | 'rain-downpour'
   | 'wind'
+  | 'storm-wind'
   | 'fire'
   | 'waves'
   | 'stream'
