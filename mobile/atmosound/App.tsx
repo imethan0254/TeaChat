@@ -14,19 +14,16 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import MapView, { Marker } from 'react-native-maps';
 import { engine } from './src/audio/engine';
 import {
-  ClockIcon,
-  DiceIcon,
   DropIcon,
   EyeIcon,
-  EyeOffIcon,
   GearIcon,
   GlobeIcon,
   LocateIcon,
   PauseIcon,
   PlayIcon,
   RainCloudIcon,
+  RainSearchIcon,
   SearchIcon,
-  SlidersIcon,
 } from './src/components/Icons';
 import { MixerSheet } from './src/components/MixerSheet';
 import { RainScene } from './src/components/RainScene';
@@ -57,8 +54,6 @@ function Main() {
     weather,
     level,
     isPlaying,
-    timerEndsAt,
-    timerFading,
     findingRain,
     uiHidden,
     setView,
@@ -77,6 +72,7 @@ function Main() {
   const [rainMarkers, setRainMarkers] = useState<{ city: City; level: number }[]>([]);
   const mapRef = useRef<MapView>(null);
   const rippleId = useRef(0);
+  const timerEndsAt = useApp((s) => s.timerEndsAt);
 
   const phase = dayPhase(location.utcOffsetSeconds);
   const palette = PALETTES[phase];
@@ -135,7 +131,7 @@ function Main() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerEndsAt]);
 
-  // 進入地圖:載入全球雨點標記(需求 4;快取 10 分鐘)
+  // 進入地圖:載入全球雨點標記(快取 10 分鐘)
   useEffect(() => {
     if (view !== 'map') return;
     if (rainMarkersCache && Date.now() - rainMarkersCache.at < 10 * 60 * 1000) {
@@ -169,7 +165,7 @@ function Main() {
     );
   }, [location.lat, location.lon, view]);
 
-  // 點擊雨景(需求 3、5、8):水波紋 + 水滴聲;UI 顯示中則同時進入 Zen 模式
+  // 點擊雨景:水波紋 + 觸水聲;UI 顯示中則同時直接隱藏(按鈕整併需求)
   const onScenePress = useCallback(
     (x: number, y: number) => {
       const id = rippleId.current++;
@@ -186,7 +182,7 @@ function Main() {
     await setLocation({ ...useApp.getState().location, lat, lon, name: geo.name });
   };
 
-  // 定位鍵(需求 7):重新抓 GPS → 找離自己最近的雨
+  // 定位(整入地圖畫面):重新抓 GPS → 找離自己最近的雨
   const onLocate = async () => {
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
@@ -231,7 +227,7 @@ function Main() {
             showsPointsOfInterest={false}
             toolbarEnabled={false}
           >
-            {/* 需求 4:正在下雨的城市標記,點擊直接切換 */}
+            {/* 正在下雨的城市標記,點擊直接切換 */}
             {rainMarkers.map((m) => (
               <Marker
                 key={`${m.city.en}`}
@@ -259,6 +255,20 @@ function Main() {
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
+
+          {/* 地圖內建工具(按鈕整併):搜尋 + 回到我的位置 */}
+          <View style={[styles.mapTools, { bottom: insets.bottom + 20 }]}>
+            <Pressable style={styles.mapToolBtn} onPress={() => setSheet('search')}>
+              <SearchIcon size={20} color={iconColor} />
+            </Pressable>
+            <Pressable style={styles.mapToolBtn} onPress={() => void onLocate()} disabled={findingRain}>
+              {findingRain ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <LocateIcon size={20} color={iconColor} />
+              )}
+            </Pressable>
+          </View>
         </>
       ) : (
         <Pressable
@@ -271,8 +281,8 @@ function Main() {
 
       <RippleLayer ripples={ripples} />
 
-      {/* Zen 模式(需求 5):只留右下角眼睛鍵 */}
       {uiHidden ? (
+        /* Zen 模式:右下角保留顯示鍵 */
         <Pressable
           style={[styles.eyeBtn, { bottom: insets.bottom + 18, right: 18 }]}
           onPress={() => setUiHidden(false)}
@@ -291,8 +301,8 @@ function Main() {
             <WeatherPanel palette={palette} phase={phase} />
           </View>
 
-          {/* 右側 icon-only FAB(需求 2):切換視圖 / 隨機找雨 / 定位最近 / 設定 */}
-          <View style={[styles.fabCol, { bottom: insets.bottom + 148 }]}>
+          {/* 右側唯一按鈕列(由上而下):地圖切換 / 找雨 / 設定 / 播放主鍵 */}
+          <View style={[styles.fabCol, { bottom: insets.bottom + 24 }]}>
             <Fab onPress={() => setView(view === 'rain' ? 'map' : 'rain')}>
               {view === 'rain' ? (
                 <GlobeIcon size={21} color={iconColor} />
@@ -301,57 +311,24 @@ function Main() {
               )}
             </Fab>
             <Fab onPress={() => void runRainFinder('random')} busy={findingRain}>
-              <DiceIcon size={21} color={iconColor} />
-            </Fab>
-            <Fab onPress={() => void onLocate()} busy={findingRain}>
-              <LocateIcon size={21} color={iconColor} />
+              <RainSearchIcon size={21} color={iconColor} />
             </Fab>
             <Fab onPress={() => setSheet('settings')}>
               <GearIcon size={21} color={iconColor} />
             </Fab>
-          </View>
-
-          {/* 右下角:進入 Zen 模式 */}
-          <Pressable
-            style={[styles.eyeBtn, { bottom: insets.bottom + 88, right: 18 }]}
-            onPress={() => setUiHidden(true)}
-          >
-            <EyeOffIcon size={21} color={iconColor} />
-          </Pressable>
-
-          {/* 底部控制列(精簡:搜尋/混音/播放/計時) */}
-          <View
-            style={[
-              styles.bar,
-              {
-                bottom: insets.bottom + 16,
-                backgroundColor: palette.bar,
-                borderColor: palette.panelBorder,
-              },
-            ]}
-          >
-            <BarButton onPress={() => setSheet('search')}>
-              <SearchIcon size={22} color={palette.subtext} />
-            </BarButton>
-            <BarButton onPress={() => setSheet('mixer')}>
-              <SlidersIcon size={22} color={palette.subtext} />
-            </BarButton>
-            <Pressable
-              style={[styles.playBtn, { backgroundColor: palette.accent }]}
-              onPress={togglePlay}
-            >
-              {isPlaying ? (
-                <PauseIcon size={24} color="#fff" />
-              ) : (
-                <PlayIcon size={24} color="#fff" />
-              )}
-            </Pressable>
-            <BarButton onPress={() => setSheet('timer')}>
-              <ClockIcon
-                size={22}
-                color={timerEndsAt || timerFading ? palette.accent : palette.subtext}
-              />
-            </BarButton>
+            {/* 播放/暫停 = 主按鈕:更大、accent 底色、外圈光暈 */}
+            <View style={[styles.playHalo, { borderColor: `${palette.accent}55` }]}>
+              <Pressable
+                style={[styles.playBtn, { backgroundColor: palette.accent }]}
+                onPress={togglePlay}
+              >
+                {isPlaying ? (
+                  <PauseIcon size={26} color="#fff" />
+                ) : (
+                  <PlayIcon size={26} color="#fff" />
+                )}
+              </Pressable>
+            </View>
           </View>
         </>
       )}
@@ -378,7 +355,13 @@ function Main() {
       />
       <MixerSheet visible={sheet === 'mixer'} onClose={() => setSheet(null)} palette={palette} />
       <TimerSheet visible={sheet === 'timer'} onClose={() => setSheet(null)} palette={palette} />
-      <SettingsSheet visible={sheet === 'settings'} onClose={() => setSheet(null)} palette={palette} />
+      <SettingsSheet
+        visible={sheet === 'settings'}
+        onClose={() => setSheet(null)}
+        palette={palette}
+        onOpenMixer={() => setSheet('mixer')}
+        onOpenTimer={() => setSheet('timer')}
+      />
     </View>
   );
 }
@@ -395,14 +378,6 @@ function Fab({
   return (
     <Pressable style={styles.fab} onPress={onPress} disabled={busy}>
       {busy ? <ActivityIndicator color="#fff" size="small" /> : children}
-    </Pressable>
-  );
-}
-
-function BarButton({ children, onPress }: { children: React.ReactNode; onPress: () => void }) {
-  return (
-    <Pressable style={styles.barBtn} onPress={onPress}>
-      {children}
     </Pressable>
   );
 }
@@ -431,7 +406,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   panelWrap: { position: 'absolute', left: 16, right: 16 },
-  fabCol: { position: 'absolute', right: 14, alignItems: 'center', gap: 10 },
+  fabCol: { position: 'absolute', right: 14, alignItems: 'center', gap: 12 },
   fab: {
     width: 46,
     height: 46,
@@ -441,6 +416,27 @@ const styles = StyleSheet.create({
     borderColor: FAB_BORDER,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  playHalo: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  playBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 7,
   },
   eyeBtn: {
     position: 'absolute',
@@ -453,33 +449,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bar: {
-    position: 'absolute',
-    left: 16,
-    right: 80,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  barBtn: {
+  mapTools: { position: 'absolute', left: 16, gap: 10 },
+  mapToolBtn: {
     width: 46,
     height: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    borderRadius: 23,
+    backgroundColor: FAB_BG,
+    borderWidth: 1,
+    borderColor: FAB_BORDER,
     alignItems: 'center',
     justifyContent: 'center',
   },

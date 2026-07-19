@@ -212,17 +212,28 @@ while pos < DUR + 2:
     pos += rng.uniform(0.7, 2.2)
 save("keyboard", norm(loopify(lp(kb, 5600)), 0.6))
 
-# ── drop:點擊互動水滴 plip(one-shot 0.5s) ──
-dn = int(0.5 * SR)
+# ── drop:觸水互動音(one-shot 0.85s)— 模擬手觸碰/劃過水面 ──
+dn = int(0.85 * SR)
 tt = np.arange(dn) / SR
-f = 820 * np.exp(-tt * 9) + 260            # 快速下滑的水滴音高
-ph = 2 * np.pi * np.cumsum(f) / SR
-plip = np.sin(ph) * np.exp(-tt * 14)
-b2 = int(0.06 * SR)                          # 60ms 後的小氣泡回彈
-fb = 1150 * np.exp(-tt * 12) + 380
-bubble = np.sin(2 * np.pi * np.cumsum(fb) / SR) * np.exp(-tt * 18) * 0.5
-plip[b2:] += bubble[:-b2] if b2 > 0 else bubble
-splash = lp(white(dn), 2600) * np.exp(-tt * 22) * 0.12
-save("drop", norm(plip + splash, 0.7))
+# 手入水 swish:水感頻帶噪音,快起緩收 + 水面湧動 wobble
+swish = bp(white(dn), 250, 1800)
+env = np.minimum(tt / 0.03, 1) * np.exp(-tt * 6.5)
+wobble = 1 + 0.45 * np.sin(2 * np.pi * 9 * tt + 1.2) * np.exp(-tt * 4)
+swish = swish * env * wobble * 0.7
+# 手排開水體的悶沉低頻
+body = lp(white(dn), 300) * np.minimum(tt / 0.05, 1) * np.exp(-tt * 5) * 0.5
+# 幾顆上滑小氣泡
+bubbles = np.zeros(dn)
+for _ in range(4):
+    start = rng.uniform(0.05, 0.4); bd = rng.uniform(0.03, 0.06)
+    bn = int(bd * SR); i = int(start * SR)
+    if i + bn >= dn: continue
+    tb = np.arange(bn) / SR
+    f0 = rng.uniform(500, 900)
+    ph = 2 * np.pi * np.cumsum(f0 * (1 + 1.1 * tb / bd)) / SR
+    bubbles[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.2 * rng.uniform(0.1, 0.22)
+# 收尾細小水花
+tail = bp(white(dn), 900, 3200) * np.exp(-np.maximum(tt - 0.15, 0) * 9) * (tt > 0.15) * 0.12
+save("drop", norm(lp(swish + body + bubbles + tail, 3800), 0.72))
 
 print("DONE")

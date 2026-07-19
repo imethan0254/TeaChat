@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { makeT, RAIN_LEVEL_TEXT } from '../i18n/strings';
 import { weatherEmoji } from '../lib/rainLevels';
 import { formatLocalDate, formatLocalTime, PHASE_KEY, type Palette } from '../lib/theme';
 import { useApp } from '../state/store';
 import type { DayPhase } from '../types';
+import { InfoIcon } from './Icons';
+import { LevelInfoModal } from './LevelInfoModal';
 
 interface Props {
   palette: Palette;
@@ -19,6 +21,7 @@ export function WeatherPanel({ palette, phase }: Props) {
   const { lang, location, weather, weatherError, level, rainSearchNote, findingRain } = useApp();
   const t = makeT(lang);
   const [, forceTick] = useState(0);
+  const [showScale, setShowScale] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -66,12 +69,12 @@ export function WeatherPanel({ palette, phase }: Props) {
           {levelText ? (
             <View style={styles.levelBlock}>
               <View style={styles.levelHeader}>
-                <Text style={[styles.levelBadge, { color: palette.accent, borderColor: palette.accent }]}>
-                  {level} / 7
-                </Text>
                 <Text style={[styles.levelName, { color: palette.text }]}>
                   {levelText.name[lang]}
                 </Text>
+                <Pressable onPress={() => setShowScale(true)} hitSlop={8}>
+                  <InfoIcon size={16} color={palette.subtext} strokeWidth={1.8} />
+                </Pressable>
               </View>
               <Text style={[styles.levelDesc, { color: palette.subtext }]} numberOfLines={3}>
                 {levelText.desc[lang]}
@@ -79,7 +82,12 @@ export function WeatherPanel({ palette, phase }: Props) {
             </View>
           ) : (
             <View style={styles.levelBlock}>
-              <Text style={[styles.levelName, { color: palette.text }]}>{t('noRainHere')}</Text>
+              <View style={styles.levelHeader}>
+                <Text style={[styles.levelName, { color: palette.text }]}>{t('noRainHere')}</Text>
+                <Pressable onPress={() => setShowScale(true)} hitSlop={8}>
+                  <InfoIcon size={16} color={palette.subtext} strokeWidth={1.8} />
+                </Pressable>
+              </View>
               <Text style={[styles.levelDesc, { color: palette.subtext }]}>{t('noRainHint')}</Text>
             </View>
           )}
@@ -103,6 +111,14 @@ export function WeatherPanel({ palette, phase }: Props) {
           {weatherError ? t('fetchFailed') : t('fetching')}
         </Text>
       )}
+
+      <LevelInfoModal
+        visible={showScale}
+        onClose={() => setShowScale(false)}
+        palette={palette}
+        lang={lang}
+        currentLevel={level}
+      />
     </View>
   );
 }
@@ -128,15 +144,6 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 42, marginLeft: 8 },
   levelBlock: { marginTop: 12 },
   levelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  levelBadge: {
-    fontSize: 11,
-    fontWeight: '800',
-    borderWidth: 1.2,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
   levelName: { fontSize: 18, fontWeight: '700', letterSpacing: 0.4 },
   levelDesc: { fontSize: 12, lineHeight: 18, marginTop: 6 },
   note: { marginTop: 8, fontSize: 11, fontWeight: '600' },

@@ -70,6 +70,13 @@ const STRINGS = {
   cancelTimer: { en: 'Cancel timer', 'zh-Hant': '取消計時' },
   fadingOut: { en: 'Fading out…', 'zh-Hant': '淡出中…' },
 
+  // Rain scale info(需求 5:i 浮窗)
+  rainScaleTitle: { en: 'Rain Intensity Scale', 'zh-Hant': '雨勢分級說明' },
+  rainScaleIntro: {
+    en: 'Rainland maps real-time rainfall (mm/h) into 7 levels — each with its own soundscape and animation.',
+    'zh-Hant': 'Rainland 依即時降雨量(mm/h)分為七級,每一級有專屬的聲音層次與動畫強度。',
+  },
+
   // Settings
   settingsTitle: { en: 'Settings', 'zh-Hant': '設定' },
   language: { en: 'Language', 'zh-Hant': '語言' },

@@ -48,16 +48,20 @@ export const RainCloudIcon = (p: IconProps) => (
   </Svg>
 );
 
-/** 骰子(隨機找雨) */
-export const DiceIcon = (p: IconProps) => {
+/** 找雨(需求 4):放大鏡搜尋意象,鏡片內含雨滴 */
+export const RainSearchIcon = (p: IconProps) => {
   const c = p.color ?? D.color;
   return (
     <Svg {...base(p)}>
-      <Rect x={4} y={4} width={16} height={16} rx={4.5} {...stroke(p)} />
-      <Circle cx={9} cy={9} r={1.4} fill={c} />
-      <Circle cx={15} cy={15} r={1.4} fill={c} />
-      <Circle cx={15} cy={9} r={1.4} fill={c} />
-      <Circle cx={9} cy={15} r={1.4} fill={c} />
+      <Circle cx={10.5} cy={10.5} r={7} {...stroke(p)} />
+      <Line x1={15.8} y1={15.8} x2={21} y2={21} {...stroke(p)} />
+      <Path
+        d="M10.5 6.8c1.5 1.9 2.8 3.4 2.8 5a2.8 2.8 0 1 1-5.6 0c0-1.6 1.3-3.1 2.8-5z"
+        fill={c}
+        stroke={c}
+        strokeWidth={1}
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 };
@@ -77,20 +81,18 @@ export const LocateIcon = (p: IconProps) => {
   );
 };
 
-/** 齒輪(設定) */
-export const GearIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Circle cx={12} cy={12} r={3.2} {...stroke(p)} />
-    <Line x1={12} y1={2.8} x2={12} y2={5.6} {...stroke(p)} />
-    <Line x1={12} y1={18.4} x2={12} y2={21.2} {...stroke(p)} />
-    <Line x1={2.8} y1={12} x2={5.6} y2={12} {...stroke(p)} />
-    <Line x1={18.4} y1={12} x2={21.2} y2={12} {...stroke(p)} />
-    <Line x1={5.5} y1={5.5} x2={7.5} y2={7.5} {...stroke(p)} />
-    <Line x1={16.5} y1={16.5} x2={18.5} y2={18.5} {...stroke(p)} />
-    <Line x1={18.5} y1={5.5} x2={16.5} y2={7.5} {...stroke(p)} />
-    <Line x1={7.5} y1={16.5} x2={5.5} y2={18.5} {...stroke(p)} />
-  </Svg>
-);
+/** 齒輪(設定)— 常見實心齒輪造型(需求 4) */
+export const GearIcon = (p: IconProps) => {
+  const c = p.color ?? D.color;
+  return (
+    <Svg {...base(p)}>
+      <Path
+        fill={c}
+        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"
+      />
+    </Svg>
+  );
+};
 
 /** 放大鏡(搜尋) */
 export const SearchIcon = (p: IconProps) => (
@@ -160,6 +162,26 @@ export const EyeOffIcon = (p: IconProps) => (
   <Svg {...base(p)}>
     <Path d="M4.5 8.5C3.2 9.9 2.5 12 2.5 12s3.5 6.2 9.5 6.2c1.3 0 2.5-.3 3.6-.8M9.5 6.2c.8-.25 1.6-.4 2.5-.4 6 0 9.5 6.2 9.5 6.2s-.9 1.6-2.5 3.2" {...stroke(p)} />
     <Line x1={4} y1={4} x2={20} y2={20} {...stroke(p)} />
+  </Svg>
+);
+
+/** i 資訊鍵(雨勢分級說明浮窗) */
+export const InfoIcon = (p: IconProps) => {
+  const c = p.color ?? D.color;
+  return (
+    <Svg {...base(p)}>
+      <Circle cx={12} cy={12} r={9} {...stroke(p)} />
+      <Circle cx={12} cy={7.8} r={1.3} fill={c} />
+      <Line x1={12} y1={11} x2={12} y2={16.5} {...stroke(p)} />
+    </Svg>
+  );
+};
+
+/** 關閉(浮窗 X) */
+export const CloseIcon = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1={6} y1={6} x2={18} y2={18} {...stroke(p)} />
+    <Line x1={18} y1={6} x2={6} y2={18} {...stroke(p)} />
   </Svg>
 );
 
