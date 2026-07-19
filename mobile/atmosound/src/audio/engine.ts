@@ -1,6 +1,6 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import type { TrackId } from '../types';
-import { ALL_TRACKS, THUNDER_SOURCE, TRACK_SOURCES } from './tracks';
+import { ALL_TRACKS, DROP_SOURCE, THUNDER_SOURCE, TRACK_SOURCES } from './tracks';
 
 /**
  * 音訊引擎(PRD v2 §5.4)
@@ -11,6 +11,7 @@ import { ALL_TRACKS, THUNDER_SOURCE, TRACK_SOURCES } from './tracks';
 class SoundEngine {
   private players = new Map<TrackId, AudioPlayer>();
   private thunderPlayer: AudioPlayer | null = null;
+  private dropPlayer: AudioPlayer | null = null;
 
   /** 天氣自動層目標音量 */
   private weatherTargets = new Map<TrackId, number>();
@@ -43,7 +44,17 @@ class SoundEngine {
     }
     this.thunderPlayer = createAudioPlayer(THUNDER_SOURCE);
     this.thunderPlayer.volume = 0.8;
+    this.dropPlayer = createAudioPlayer(DROP_SOURCE);
     this.ready = true;
+  }
+
+  /** 點擊畫面的水滴互動音(獨立於播放狀態,隨點隨響) */
+  async playDrop() {
+    await this.init();
+    if (!this.dropPlayer) return;
+    this.dropPlayer.volume = Math.min(0.55 * this.master + 0.15, 0.8);
+    await this.dropPlayer.seekTo(0);
+    this.dropPlayer.play();
   }
 
   setMaster(v: number) {
@@ -132,6 +143,7 @@ class SoundEngine {
     if (this.thunderTimer) clearTimeout(this.thunderTimer);
     for (const p of this.players.values()) p.remove();
     this.thunderPlayer?.remove();
+    this.dropPlayer?.remove();
     this.players.clear();
     this.ready = false;
   }

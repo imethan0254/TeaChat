@@ -1,12 +1,19 @@
-"""AtmoSound — 程式合成無縫循環環境音素材(CC0,自產零授權)"""
+"""Rainland — 乾淨版音源重製(需求 6)
+- pink noise 基底 + 全體 lowpass:去除白噪的高頻嘶聲刺耳感
+- droplet 較少、較軟(低頻帶、緩衰減),不再劈啪吵雜
+- WAV 22050Hz 直存:AAC 有 encoder priming gap,loop 接縫會「斷一下」;WAV 無縫
+- 循環 32 秒 + 3 秒 crossfade,聽感連續不間斷
+- 新增 drop.wav:點擊畫面的水滴 plip 互動音
+"""
 import numpy as np
 from scipy import signal
-import wave, os, subprocess
+import wave, os
 
-SR = 44100
+SR = 22050
+NYQ = SR / 2
 OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "audio")
 os.makedirs(OUT, exist_ok=True)
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(11)
 
 def white(n): return rng.standard_normal(n)
 
@@ -21,32 +28,30 @@ def pink(n):
 
 def brown(n):
     x = np.cumsum(white(n))
-    x -= np.linspace(x[0], x[-1], n)  # detrend so loop ends near start
+    x -= np.linspace(x[0], x[-1], n)
     return x / (np.abs(x).max() + 1e-9)
 
-def bp(x, lo, hi, order=4):
-    sos = signal.butter(order, [lo, hi], btype="band", fs=SR, output="sos")
+def bp(x, lo, hi, order=2):
+    sos = signal.butter(order, [lo, min(hi, NYQ - 100)], btype="band", fs=SR, output="sos")
     return signal.sosfilt(sos, x)
 
 def lp(x, fc, order=4):
-    sos = signal.butter(order, fc, btype="low", fs=SR, output="sos")
+    sos = signal.butter(order, min(fc, NYQ - 100), btype="low", fs=SR, output="sos")
     return signal.sosfilt(sos, x)
 
-def hp(x, fc, order=4):
+def hp(x, fc, order=2):
     sos = signal.butter(order, fc, btype="high", fs=SR, output="sos")
     return signal.sosfilt(sos, x)
 
 def slow_lfo(n, hz, depth=1.0, base=1.0):
-    """smoothed random LFO in [base-depth/2, base+depth/2]"""
     k = max(int(SR / max(hz, 0.01) / 8), 1)
     seed = rng.standard_normal(n // k + 4)
     l = np.interp(np.arange(n), np.arange(len(seed)) * k, seed)
     l = lp(l, hz * 2, 2)
     l = l / (np.abs(l).max() + 1e-9)
-    return base + l * depth / 2
+    return np.clip(base + l * depth / 2, 0.05, None)
 
-def loopify(x, xfade_s=2.0):
-    """crossfade tail into head -> seamless loop"""
+def loopify(x, xfade_s=3.0):
     L = int(xfade_s * SR)
     n = len(x) - L
     y = x[:n].copy()
@@ -54,94 +59,108 @@ def loopify(x, xfade_s=2.0):
     y[:L] = y[:L] * r + x[n:] * (1 - r)
     return y
 
-def norm(x, peak=0.85):
+def norm(x, peak=0.8):
     return x / (np.abs(x).max() + 1e-9) * peak
 
-def save(name, x, sr=SR):
+def save(name, x):
     x16 = (np.clip(x, -1, 1) * 32767).astype(np.int16)
     p = f"{OUT}/{name}.wav"
     with wave.open(p, "w") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(x16.tobytes())
-    m4a = f"{OUT}/{name}.m4a"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", p,
-                    "-c:a", "aac", "-b:a", "96k", m4a], check=True)
-    os.remove(p)
-    print(name, f"{os.path.getsize(m4a)//1024}KB")
+    print(name, f"{os.path.getsize(p)//1024}KB")
 
-def droplets(n, rate_hz, f_lo, f_hi, dur_s=0.012):
-    """random short filtered ticks (rain droplets / crackle base)"""
+def soft_drops(n, rate_hz, f_lo, f_hi, dur_s=0.03):
+    """柔軟水滴:低頻帶 + 緩衰減,不劈啪"""
     out = np.zeros(n)
     count = int(rate_hz * n / SR)
     d = int(dur_s * SR)
-    env = np.exp(-np.linspace(0, 6, d))
+    env = np.exp(-np.linspace(0, 5, d)) * np.sin(np.pi * np.minimum(np.linspace(0, 4, d), 1))
     for _ in range(count):
         i = rng.integers(0, n - d)
         fc = rng.uniform(f_lo, f_hi)
-        bw = fc * 0.6
-        tick = bp(white(d) * env, max(fc - bw, 80), min(fc + bw, SR // 2 - 100), 2)
-        out[i:i + d] += tick * rng.uniform(0.3, 1.0)
+        tick = bp(white(d) * env, max(fc * 0.55, 100), fc * 1.6, 2)
+        out[i:i + d] += tick * rng.uniform(0.25, 0.7)
     return out
 
-DUR = 28  # seconds per loop (+2s xfade)
-N = (DUR + 2) * SR
+DUR = 32
+N = (DUR + 3) * SR
 
-# ── 小雨 rain-light ───────────────────────────────
-hiss = bp(white(N), 800, 9000) * 0.16
-hiss *= slow_lfo(N, 0.15, 0.25, 1.0)
-drops = droplets(N, 22, 1500, 6500) * 0.5
-save("rain-light", norm(loopify(lp(hiss + drops, 11000))))
+# ── L1 rain-mist:霧狀細雨,極柔 ──
+mist = bp(pink(N), 400, 2600) * slow_lfo(N, 0.05, 0.3, 1.0)
+save("rain-mist", norm(loopify(lp(mist, 3200)), 0.6))
 
-# ── 大雨 rain-heavy ───────────────────────────────
-wash = bp(white(N), 200, 10000) * 0.5
-rumble = lp(brown(N), 220) * 0.55
-drops = droplets(N, 90, 900, 7000) * 0.4
-heavy = wash * slow_lfo(N, 0.12, 0.2, 1.0) + rumble + drops
-save("rain-heavy", norm(loopify(heavy)))
+# ── L2 rain-drips:錯落滴答,溫潤 ──
+bed = bp(pink(N), 350, 2200) * 0.22 * slow_lfo(N, 0.07, 0.25, 1.0)
+drips = soft_drops(N, 6, 600, 2200, 0.035) * 0.85
+save("rain-drips", norm(loopify(lp(bed + drips, 3600)), 0.68))
 
-# ── 風 wind ───────────────────────────────────────
-base = lp(pink(N), 500) * slow_lfo(N, 0.1, 1.1, 0.9)
-whistle = bp(pink(N), 600, 1100, 2) * slow_lfo(N, 0.07, 0.9, 0.5) * 0.25
-save("wind", norm(loopify(base + whistle)))
+# ── L3 rain-light:綿綿沙沙 ──
+body = bp(pink(N), 300, 4200) * 0.55 * slow_lfo(N, 0.08, 0.2, 1.0)
+drs = soft_drops(N, 14, 600, 2600) * 0.4
+save("rain-light", norm(loopify(lp(body + drs, 5000)), 0.74))
 
-# ── 雷 thunder(one-shot,非循環)──────────────────
-tn = int(9 * SR)
-crack = hp(white(int(0.25 * SR)), 700) * np.exp(-np.linspace(0, 9, int(0.25 * SR)))
-roll = lp(brown(tn), 110) * np.exp(-np.linspace(0, 3.4, tn))
-roll *= slow_lfo(tn, 0.8, 0.9, 0.75)  # rolling rumble
-th = roll
-th[:len(crack)] += crack * 0.5
-fade = np.ones(tn); fs_ = int(1.5 * SR); fade[-fs_:] = np.linspace(1, 0, fs_)
-save("thunder", norm(th * fade, 0.9))
+# ── L4 rain-medium:飽滿但溫潤的啪嗒 ──
+body = bp(pink(N) * 0.75 + white(N) * 0.25, 250, 4800) * 0.6 * slow_lfo(N, 0.09, 0.18, 1.0)
+drs = soft_drops(N, 30, 500, 3000) * 0.35
+low = lp(brown(N), 220) * 0.22
+save("rain-medium", norm(loopify(lp(body + drs + low, 5600))))
 
-# ── 柴火 fire ─────────────────────────────────────
-crackle = droplets(N, 14, 2500, 9000, 0.006) * 0.9
-pops = droplets(N, 3, 300, 1200, 0.02) * 0.9
-emberhum = lp(brown(N), 350) * 0.35 * slow_lfo(N, 0.2, 0.5, 0.8)
-save("fire", norm(loopify(crackle + pops + emberhum)))
+# ── L5 rain-heavy:厚實但不刺耳 ──
+body = bp(pink(N) * 0.6 + white(N) * 0.4, 200, 5200) * 0.75 * slow_lfo(N, 0.1, 0.15, 1.0)
+low = lp(brown(N), 200) * 0.32
+drs = soft_drops(N, 45, 450, 3200) * 0.3
+save("rain-heavy", norm(loopify(lp(body + low + drs, 6000))))
 
-# ── 海浪 waves ────────────────────────────────────
+# ── L6-7 rain-downpour:平滑轟鳴 roar ──
+roar = bp(pink(N) * 0.5 + white(N) * 0.5, 160, 5800) * 0.9 * slow_lfo(N, 0.1, 0.12, 1.0)
+deep = lp(brown(N), 170) * 0.45
+save("rain-downpour", norm(loopify(lp(roar + deep, 6400))))
+
+# ── wind:柔風(呼嘯壓低) ──
+gust = lp(pink(N), 380) * slow_lfo(N, 0.09, 0.9, 0.85)
+whistle = bp(pink(N), 550, 950) * slow_lfo(N, 0.06, 0.7, 0.4) * 0.12
+save("wind", norm(loopify(gust + whistle), 0.72))
+
+# ── storm-wind:深沉陣風 ──
+gust = lp(pink(N), 330) * slow_lfo(N, 0.13, 1.2, 0.8)
+deep = lp(brown(N), 100) * 0.35 * slow_lfo(N, 0.08, 0.7, 0.8)
+whistle = bp(pink(N), 600, 1100) * slow_lfo(N, 0.1, 0.9, 0.45) * 0.16
+save("storm-wind", norm(loopify(gust + deep + whistle), 0.78))
+
+# ── thunder:遠雷(柔化,不炸耳) ──
+tn = int(10 * SR)
+roll = lp(brown(tn), 95) * np.exp(-np.linspace(0, 3.0, tn))
+roll *= slow_lfo(tn, 0.7, 0.8, 0.7)
+fade = np.ones(tn); fs_ = int(2 * SR); fade[-fs_:] = np.linspace(1, 0, fs_)
+save("thunder", norm(lp(roll * fade, 400), 0.7))
+
+# ── fire:溫潤柴火 ──
+crackle = soft_drops(N, 9, 1500, 5000, 0.012) * 0.7
+pops = soft_drops(N, 2, 300, 900, 0.03) * 0.8
+ember = lp(brown(N), 300) * 0.32 * slow_lfo(N, 0.15, 0.4, 0.85)
+save("fire", norm(loopify(lp(crackle + pops + ember, 6000)), 0.72))
+
+# ── waves:柔浪 ──
 t = np.arange(N) / SR
 swell = np.zeros(N)
-period = 9.0
-for k in range(int((DUR + 2) / period) + 2):
-    c = k * period + rng.uniform(-1, 1)
-    rise, fall = 3.2, 4.5
-    e = np.where(t < c, np.exp(-((t - c) / rise) ** 2), np.exp(-((t - c) / fall) ** 2))
+for k in range(int((DUR + 3) / 9.0) + 2):
+    c = k * 9.0 + rng.uniform(-1, 1)
+    e = np.where(t < c, np.exp(-((t - c) / 3.2) ** 2), np.exp(-((t - c) / 4.5) ** 2))
     swell += e
 swell = lp(swell, 1.0, 2); swell = swell / (swell.max() + 1e-9)
-body = bp(white(N), 120, 1800) * (0.15 + 0.85 * swell)
-foam = bp(white(N), 2000, 8000) * (0.05 + 0.5 * swell ** 2)
-save("waves", norm(loopify(body + foam * 0.5)))
+bodyw = bp(pink(N), 150, 1600) * (0.18 + 0.82 * swell)
+foam = bp(white(N), 1800, 4800) * (0.04 + 0.35 * swell ** 2)
+save("waves", norm(loopify(lp(bodyw + foam * 0.4, 5200)), 0.75))
 
-# ── 溪流 stream ───────────────────────────────────
-sh = bp(white(N), 600, 3200) * slow_lfo(N, 6, 0.5, 0.8)
-gl = bp(white(N), 3000, 8000) * slow_lfo(N, 9, 0.6, 0.5) * 0.4
-lowg = lp(brown(N), 300) * 0.25
-save("stream", norm(loopify(sh + gl + lowg)))
+# ── stream:柔溪 ──
+sh = bp(pink(N), 400, 2400) * slow_lfo(N, 5, 0.4, 0.8)
+gl = bp(white(N), 2400, 5000) * slow_lfo(N, 8, 0.5, 0.5) * 0.22
+lowg = lp(brown(N), 260) * 0.2
+save("stream", norm(loopify(lp(sh + gl + lowg, 5600)), 0.72))
 
-# ── 鳥鳴 birds ────────────────────────────────────
-amb = lp(pink(N), 400) * 0.06
+# ── birds(降亮度) ──
+amb = lp(pink(N), 350) * 0.06
 chirps = np.zeros(N)
 def chirp(f0, f1, d, vib=0):
     n_ = int(d * SR); tt = np.arange(n_) / SR
@@ -150,85 +169,60 @@ def chirp(f0, f1, d, vib=0):
     e = np.sin(np.pi * np.linspace(0, 1, n_)) ** 1.5
     return np.sin(ph) * e
 pos = 1.0
-while pos < DUR + 1:
-    nnotes = rng.integers(2, 6)
-    base_f = rng.uniform(2200, 4200)
-    for j in range(nnotes):
+while pos < DUR + 1.5:
+    for j in range(rng.integers(2, 6)):
+        base_f = rng.uniform(2000, 3800)
         d = rng.uniform(0.06, 0.16)
-        c = chirp(base_f * rng.uniform(0.9, 1.3), base_f * rng.uniform(0.8, 1.2), d, vib=rng.uniform(0, 120))
+        c = chirp(base_f * rng.uniform(0.9, 1.25), base_f * rng.uniform(0.8, 1.2), d, vib=rng.uniform(0, 100))
         i = int(pos * SR)
-        if i + len(c) < N: chirps[i:i + len(c)] += c * rng.uniform(0.2, 0.5)
+        if i + len(c) < N: chirps[i:i + len(c)] += c * rng.uniform(0.15, 0.4)
         pos += d + rng.uniform(0.05, 0.25)
-    pos += rng.uniform(1.2, 3.5)
-save("birds", norm(loopify(amb + chirps)))
+    pos += rng.uniform(1.5, 3.5)
+save("birds", norm(loopify(lp(amb + chirps, 5200)), 0.65))
 
-# ── 蟲鳴 crickets ─────────────────────────────────
+# ── crickets(降亮度) ──
 amb = lp(pink(N), 300) * 0.05
 cr = np.zeros(N)
-for f0, pulse_hz, group_s, gap_lo, gap_hi, amp in [(4300, 27, 0.55, 0.4, 1.0, 0.35), (3600, 18, 0.8, 1.0, 2.4, 0.22)]:
+for f0, pulse_hz, group_s, gap_lo, gap_hi, amp in [(3900, 25, 0.55, 0.5, 1.2, 0.28), (3300, 17, 0.8, 1.2, 2.6, 0.18)]:
     pos = rng.uniform(0, 1)
-    while pos < DUR + 1.5:
+    while pos < DUR + 2:
         n_ = int(group_s * SR); tt = np.arange(n_) / SR
-        pulse = (np.sin(2 * np.pi * pulse_hz * tt) > 0.2).astype(float)
-        pulse = lp(pulse, 200, 2)
-        tone = np.sin(2 * np.pi * f0 * tt + 3 * np.sin(2 * np.pi * 7 * tt))
+        pulse = lp((np.sin(2 * np.pi * pulse_hz * tt) > 0.2).astype(float), 180, 2)
+        tone = np.sin(2 * np.pi * f0 * tt + 2.5 * np.sin(2 * np.pi * 6 * tt))
         e = np.sin(np.pi * np.linspace(0, 1, n_)) ** 0.5
         i = int(pos * SR)
         if i + n_ < N: cr[i:i + n_] += tone * pulse * e * amp
         pos += group_s + rng.uniform(gap_lo, gap_hi)
-save("crickets", norm(loopify(amb + cr)))
+save("crickets", norm(loopify(amb + cr), 0.6))
 
-# ── 鍵盤 keyboard ─────────────────────────────────
+# ── keyboard(柔化) ──
 kb = np.zeros(N)
 pos = 0.5
-while pos < DUR + 1.5:
-    burst = rng.integers(4, 14)          # 一段打字
-    for _ in range(burst):
-        d = int(0.011 * SR)
-        click = hp(white(d), 1800) * np.exp(-np.linspace(0, 7, d))
-        thock = lp(white(int(0.02 * SR)), 900) * np.exp(-np.linspace(0, 8, int(0.02 * SR)))
+while pos < DUR + 2:
+    for _ in range(rng.integers(4, 12)):
+        d = int(0.012 * SR)
+        click = hp(white(d), 1400) * np.exp(-np.linspace(0, 6, d))
+        dn = int(0.025 * SR)
+        thock = lp(white(dn), 800) * np.exp(-np.linspace(0, 7, dn))
         i = int(pos * SR)
-        if i + len(thock) < N:
-            kb[i:i + d] += click * rng.uniform(0.4, 1.0)
-            kb[i:i + len(thock)] += thock * rng.uniform(0.25, 0.6)
-        pos += rng.uniform(0.09, 0.2)
-    if rng.random() < 0.25: pos += rng.uniform(0.3, 0.8)  # spacebar pause
-    pos += rng.uniform(0.6, 2.2)
-save("keyboard", norm(loopify(kb), 0.7))
+        if i + dn < N:
+            kb[i:i + d] += click * rng.uniform(0.3, 0.7)
+            kb[i:i + dn] += thock * rng.uniform(0.2, 0.5)
+        pos += rng.uniform(0.1, 0.22)
+    pos += rng.uniform(0.7, 2.2)
+save("keyboard", norm(loopify(lp(kb, 5600)), 0.6))
 
-
-# ═══ Rainland 7 級雨勢新增音軌(mist/drips/medium/downpour/storm-wind)═══
-
-N = (DUR + 2) * SR
-
-# ── L1 絲絲細雨 rain-mist:極輕的高頻霧狀 hiss,幾乎無滴答 ──
-mist = hp(white(N), 3000) * 0.10
-mist *= slow_lfo(N, 0.08, 0.35, 1.0)
-veil = bp(white(N), 1200, 4000) * 0.05 * slow_lfo(N, 0.15, 0.4, 0.9)
-save("rain-mist", norm(loopify(mist + veil), 0.55))
-
-# ── L2 淅瀝小雨 rain-drips:錯落滴答為主,底噪極薄 ──
-drips = droplets(N, 9, 1200, 6000, 0.016) * 0.9
-base = bp(white(N), 900, 7000) * 0.05 * slow_lfo(N, 0.12, 0.3, 1.0)
-save("rain-drips", norm(loopify(drips + base), 0.7))
-
-# ── L4 滂沱中雨 rain-medium:飽滿啪嗒 + 中等 wash ──
-wash = bp(white(N), 300, 9500) * 0.32 * slow_lfo(N, 0.12, 0.25, 1.0)
-patter = droplets(N, 50, 700, 6500, 0.014) * 0.5
-lowbody = lp(brown(N), 260) * 0.3
-save("rain-medium", norm(loopify(wash + patter + lowbody)))
-
-# ── L6-7 傾盆/豪雨 rain-downpour:密不透風的 roar + 重低頻 ──
-roar = bp(white(N), 150, 11000) * 0.6 * slow_lfo(N, 0.1, 0.18, 1.0)
-rumble = lp(brown(N), 200) * 0.7
-splat = droplets(N, 160, 500, 7000, 0.012) * 0.35
-save("rain-downpour", norm(loopify(roar + rumble + splat)))
-
-# ── 狂風 storm-wind:深沉陣風 + 呼嘯,給 L6-7 ──
-gust = lp(pink(N), 420) * slow_lfo(N, 0.16, 1.4, 0.85)
-howl = bp(pink(N), 700, 1400, 2) * slow_lfo(N, 0.11, 1.1, 0.55) * 0.4
-deep = lp(brown(N), 120) * 0.4 * slow_lfo(N, 0.09, 0.8, 0.8)
-save("storm-wind", norm(loopify(gust + howl + deep)))
-
+# ── drop:點擊互動水滴 plip(one-shot 0.5s) ──
+dn = int(0.5 * SR)
+tt = np.arange(dn) / SR
+f = 820 * np.exp(-tt * 9) + 260            # 快速下滑的水滴音高
+ph = 2 * np.pi * np.cumsum(f) / SR
+plip = np.sin(ph) * np.exp(-tt * 14)
+b2 = int(0.06 * SR)                          # 60ms 後的小氣泡回彈
+fb = 1150 * np.exp(-tt * 12) + 380
+bubble = np.sin(2 * np.pi * np.cumsum(fb) / SR) * np.exp(-tt * 18) * 0.5
+plip[b2:] += bubble[:-b2] if b2 > 0 else bubble
+splash = lp(white(dn), 2600) * np.exp(-tt * 22) * 0.12
+save("drop", norm(plip + splash, 0.7))
 
 print("DONE")

@@ -35,16 +35,19 @@ interface AppState {
   timerFading: boolean;
   findingRain: boolean;
   rainSearchNote: RainSearchNote;
+  /** Zen 模式(需求 5):隱藏所有資訊只看雨 */
+  uiHidden: boolean;
   /** 使用者實體位置(找雨的距離基準;null = 未授權定位) */
   userPos: { lat: number; lon: number; countryCode: string | null } | null;
 
   setLang: (l: Lang) => void;
   setView: (v: 'rain' | 'map') => void;
+  setUiHidden: (h: boolean) => void;
   setUserPos: (p: { lat: number; lon: number; countryCode: string | null }) => void;
   setLocation: (loc: AppLocation) => Promise<void>;
   refreshWeather: (opts?: { ifStale?: boolean }) => Promise<void>;
-  /** 需求 1:找到(最近的)正在下雨的地方並切換過去 */
-  runRainFinder: () => Promise<void>;
+  /** 需求 7:'random' 隨機跳轉下雨處(find rain 鍵);'nearest' 找離自己最近(定位鍵) */
+  runRainFinder: (mode?: 'nearest' | 'random') => Promise<void>;
   togglePlay: () => void;
   setMaster: (v: number) => void;
   setTrack: (id: TrackId, patch: Partial<MixerTrackState>) => void;
@@ -98,6 +101,7 @@ export const useApp = create<AppState>((set, get) => ({
   timerFading: false,
   findingRain: false,
   rainSearchNote: null,
+  uiHidden: false,
   userPos: null,
 
   setLang: (l) => {
@@ -106,6 +110,8 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   setView: (v) => set({ view: v }),
+
+  setUiHidden: (h) => set({ uiHidden: h }),
 
   setUserPos: (p) => set({ userPos: p }),
 
@@ -133,14 +139,15 @@ export const useApp = create<AppState>((set, get) => ({
     }
   },
 
-  runRainFinder: async () => {
+  runRainFinder: async (mode = 'nearest') => {
     const { userPos, location, lang } = get();
-    const baseLat = userPos?.lat ?? location.lat;
-    const baseLon = userPos?.lon ?? location.lon;
+    // random 模式以「目前選定地點」為排除基準;nearest 模式以使用者實體位置為距離基準
+    const baseLat = mode === 'random' ? location.lat : (userPos?.lat ?? location.lat);
+    const baseLon = mode === 'random' ? location.lon : (userPos?.lon ?? location.lon);
     const cc = userPos?.countryCode ?? 'TW';
     set({ findingRain: true });
     try {
-      const spot = await findRain(baseLat, baseLon, cc);
+      const spot = await findRain(baseLat, baseLon, cc, mode);
       if (spot) {
         const name = lang === 'zh-Hant' ? spot.city.zh : spot.city.en;
         set({
