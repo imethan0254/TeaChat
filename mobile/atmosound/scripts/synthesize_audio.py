@@ -212,28 +212,29 @@ while pos < DUR + 2:
     pos += rng.uniform(0.7, 2.2)
 save("keyboard", norm(loopify(lp(kb, 5600)), 0.6))
 
-# ── drop:觸水互動音(one-shot 0.85s)— 模擬手觸碰/劃過水面 ──
-dn = int(0.85 * SR)
+# ── drop:觸水互動音(one-shot 0.95s)— water splashing 手拍到水面濺起水花 ──
+dn = int(0.95 * SR)
 tt = np.arange(dn) / SR
-# 手入水 swish:水感頻帶噪音,快起緩收 + 水面湧動 wobble
-swish = bp(white(dn), 250, 1800)
-env = np.minimum(tt / 0.03, 1) * np.exp(-tt * 6.5)
-wobble = 1 + 0.45 * np.sin(2 * np.pi * 9 * tt + 1.2) * np.exp(-tt * 4)
-swish = swish * env * wobble * 0.7
-# 手排開水體的悶沉低頻
-body = lp(white(dn), 300) * np.minimum(tt / 0.05, 1) * np.exp(-tt * 5) * 0.5
-# 幾顆上滑小氣泡
-bubbles = np.zeros(dn)
-for _ in range(4):
-    start = rng.uniform(0.05, 0.4); bd = rng.uniform(0.03, 0.06)
+# 入水 impact:短促有力的水面拍擊
+impact = bp(white(dn), 350, 4200) * np.minimum(tt / 0.006, 1) * np.exp(-tt * 26) * 1.1
+# 水花噴濺 spray:密集細碎、幅度抖動(splashing 的「嘩」)
+jitter = 1 + 0.6 * lp(white(dn), 60, 2)
+spray = bp(white(dn), 800, 4800) * np.minimum(tt / 0.015, 1) * np.exp(-tt * 7.5) * jitter * 0.55
+# 水體 slosh:低頻湧動
+slosh = lp(white(dn), 350) * np.minimum(tt / 0.03, 1) * np.exp(-tt * 5.5)
+slosh *= (1 + 0.4 * np.sin(2 * np.pi * 7 * tt + 0.8) * np.exp(-tt * 4)) * 0.5
+# 回落水滴:濺起的水珠落回水面
+plips = np.zeros(dn)
+for _ in range(5):
+    start = rng.uniform(0.18, 0.55); bd = rng.uniform(0.025, 0.05)
     bn = int(bd * SR); i = int(start * SR)
     if i + bn >= dn: continue
     tb = np.arange(bn) / SR
-    f0 = rng.uniform(500, 900)
-    ph = 2 * np.pi * np.cumsum(f0 * (1 + 1.1 * tb / bd)) / SR
-    bubbles[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.2 * rng.uniform(0.1, 0.22)
-# 收尾細小水花
-tail = bp(white(dn), 900, 3200) * np.exp(-np.maximum(tt - 0.15, 0) * 9) * (tt > 0.15) * 0.12
-save("drop", norm(lp(swish + body + bubbles + tail, 3800), 0.72))
+    f0 = rng.uniform(700, 1300)
+    ph = 2 * np.pi * np.cumsum(f0 * np.exp(-tb * 18) + 300) / SR
+    plips[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.3 * rng.uniform(0.12, 0.25)
+# 收尾餘波
+tail = bp(white(dn), 600, 2600) * np.exp(-np.maximum(tt - 0.3, 0) * 8) * (tt > 0.3) * 0.1
+save("drop", norm(lp(impact + spray + slosh + plips + tail, 5200), 0.74))
 
 print("DONE")
