@@ -212,29 +212,37 @@ while pos < DUR + 2:
     pos += rng.uniform(0.7, 2.2)
 save("keyboard", norm(loopify(lp(kb, 5600)), 0.6))
 
-# ── drop:觸水互動音(one-shot 0.95s)— water splashing 手拍到水面濺起水花 ──
-dn = int(0.95 * SR)
+# ── drop:觸水互動音(one-shot 1.15s)— surfacing water splashes 浮出水面的水花 ──
+dn = int(1.15 * SR)
 tt = np.arange(dn) / SR
-# 入水 impact:短促有力的水面拍擊
-impact = bp(white(dn), 350, 4200) * np.minimum(tt / 0.006, 1) * np.exp(-tt * 26) * 1.1
-# 水花噴濺 spray:密集細碎、幅度抖動(splashing 的「嘩」)
-jitter = 1 + 0.6 * lp(white(dn), 60, 2)
-spray = bp(white(dn), 800, 4800) * np.minimum(tt / 0.015, 1) * np.exp(-tt * 7.5) * jitter * 0.55
-# 水體 slosh:低頻湧動
-slosh = lp(white(dn), 350) * np.minimum(tt / 0.03, 1) * np.exp(-tt * 5.5)
-slosh *= (1 + 0.4 * np.sin(2 * np.pi * 7 * tt + 0.8) * np.exp(-tt * 4)) * 0.5
-# 回落水滴:濺起的水珠落回水面
-plips = np.zeros(dn)
-for _ in range(5):
-    start = rng.uniform(0.18, 0.55); bd = rng.uniform(0.025, 0.05)
+# 水面湧動 surge:低頻由下往上快速 build(水被推開、要浮出)
+surge_env = np.clip(tt / 0.09, 0, 1) ** 1.4 * np.exp(-np.maximum(tt - 0.09, 0) * 4)
+surge = lp(white(dn), 500) * surge_env * 0.6
+# 破面水花 splash:破水面瞬間寬頻爆發
+brk = bp(white(dn), 400, 5000) * np.exp(-np.maximum(tt - 0.07, 0) * 16) * (tt > 0.05)
+# 傾洩水流 cascade:中高頻噪音緩衰減 + 細碎抖動
+cascade = bp(white(dn), 700, 4500) * np.exp(-np.maximum(tt - 0.1, 0) * 5.5) * (tt > 0.08)
+cascade *= slow_lfo(dn, 22, 0.7, 1.0) * 0.5
+# 咕嚕氣泡 gurgle:數顆上滑共振氣泡(浮出水面的「濕」感)
+gurgle = np.zeros(dn)
+for _ in range(7):
+    start = rng.uniform(0.06, 0.6); bd = rng.uniform(0.04, 0.09)
     bn = int(bd * SR); i = int(start * SR)
     if i + bn >= dn: continue
     tb = np.arange(bn) / SR
-    f0 = rng.uniform(700, 1300)
-    ph = 2 * np.pi * np.cumsum(f0 * np.exp(-tb * 18) + 300) / SR
-    plips[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.3 * rng.uniform(0.12, 0.25)
-# 收尾餘波
-tail = bp(white(dn), 600, 2600) * np.exp(-np.maximum(tt - 0.3, 0) * 8) * (tt > 0.3) * 0.1
-save("drop", norm(lp(impact + spray + slosh + plips + tail, 5200), 0.74))
+    ph = 2 * np.pi * np.cumsum(rng.uniform(240, 700) * (1 + 0.9 * tb / bd)) / SR
+    gurgle[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.1 * rng.uniform(0.12, 0.26)
+# 水珠餘韻 droplets:濺起後回落
+drops = np.zeros(dn)
+for _ in range(6):
+    start = rng.uniform(0.3, 0.95); bd = rng.uniform(0.02, 0.045)
+    bn = int(bd * SR); i = int(start * SR)
+    if i + bn >= dn: continue
+    tb = np.arange(bn) / SR
+    ph = 2 * np.pi * np.cumsum(rng.uniform(800, 1500) * np.exp(-tb * 20) + 320) / SR
+    drops[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.3 * rng.uniform(0.08, 0.18)
+_drop = lp(surge + brk + cascade + gurgle + drops, 5500)
+_drop *= np.clip(1 - np.maximum(tt - 0.85, 0) / 0.3, 0, 1)  # 柔和淡出尾巴
+save("drop", norm(_drop, 0.75))
 
 print("DONE")
