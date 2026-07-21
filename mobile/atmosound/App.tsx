@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -11,10 +11,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
+import type MapView from 'react-native-maps';
 import { engine } from './src/audio/engine';
 import {
-  DropIcon,
   EyeIcon,
   GearIcon,
   GlobeIcon,
@@ -25,8 +24,13 @@ import {
   RainSearchIcon,
   SearchIcon,
 } from './src/components/Icons';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { MixerSheet } from './src/components/MixerSheet';
 import { RainScene } from './src/components/RainScene';
+// 地圖模組很重,改為「用到才載入」— 雨景(預設)不依賴 react-native-maps,避免啟動崩潰
+const MapScreen = React.lazy(() =>
+  import('./src/components/MapScreen').then((m) => ({ default: m.MapScreen })),
+);
 import { RippleLayer, type Ripple } from './src/components/RippleLayer';
 import { SearchSheet } from './src/components/SearchSheet';
 import { SettingsSheet } from './src/components/SettingsSheet';
@@ -207,49 +211,28 @@ function Main() {
     <View style={styles.root}>
       <StatusBar style={view === 'rain' ? 'light' : palette.statusBarStyle} hidden={uiHidden} />
 
-      {/* 背景:雨景動畫 ⇄ 世界地圖 */}
+      {/* 背景:雨景動畫 ⇄ 世界地圖(地圖 lazy-load) */}
       {view === 'map' ? (
         <>
-          <MapView
-            ref={mapRef}
-            style={StyleSheet.absoluteFill}
-            initialRegion={{
-              latitude: location.lat,
-              longitude: location.lon,
-              latitudeDelta: 30,
-              longitudeDelta: 30,
-            }}
-            onPress={(e) => {
-              const { latitude, longitude } = e.nativeEvent.coordinate;
-              void onMapPress(latitude, longitude);
-            }}
-            userInterfaceStyle={phase === 'night' || phase === 'dusk' ? 'dark' : 'light'}
-            showsPointsOfInterest={false}
-            toolbarEnabled={false}
-          >
-            {/* 正在下雨的城市標記,點擊直接切換 */}
-            {rainMarkers.map((m) => (
-              <Marker
-                key={`${m.city.en}`}
-                coordinate={{ latitude: m.city.lat, longitude: m.city.lon }}
-                onPress={() => {
-                  void setLocation({
-                    lat: m.city.lat,
-                    lon: m.city.lon,
-                    name: lang === 'zh-Hant' ? m.city.zh : m.city.en,
-                    timezone: useApp.getState().location.timezone,
-                    utcOffsetSeconds: useApp.getState().location.utcOffsetSeconds,
-                  });
-                }}
-                tracksViewChanges={false}
-              >
-                <View style={[styles.marker, m.level >= 5 && styles.markerHeavy]}>
-                  <DropIcon size={15} color="#fff" fill="#5a8fd9" strokeWidth={1.5} />
-                  <Text style={styles.markerText}>{m.level}</Text>
-                </View>
-              </Marker>
-            ))}
-          </MapView>
+          <Suspense fallback={<View style={[StyleSheet.absoluteFill, { backgroundColor: '#12182f' }]} />}>
+            <MapScreen
+              ref={mapRef}
+              initialLat={location.lat}
+              initialLon={location.lon}
+              dark={phase === 'night' || phase === 'dusk'}
+              rainMarkers={rainMarkers}
+              onMapPress={(lat, lon) => void onMapPress(lat, lon)}
+              onMarkerPress={(city) => {
+                void setLocation({
+                  lat: city.lat,
+                  lon: city.lon,
+                  name: lang === 'zh-Hant' ? city.zh : city.en,
+                  timezone: useApp.getState().location.timezone,
+                  utcOffsetSeconds: useApp.getState().location.utcOffsetSeconds,
+                });
+              }}
+            />
+          </Suspense>
           <LinearGradient
             colors={palette.gradient}
             style={StyleSheet.absoluteFill}
@@ -384,9 +367,11 @@ function Fab({
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <Main />
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <Main />
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
