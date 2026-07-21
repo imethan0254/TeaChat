@@ -6,6 +6,7 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "com.imethan.rainland",
       "supportsTablet": true,
