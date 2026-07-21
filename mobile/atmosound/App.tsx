@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   AppState,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -366,12 +367,37 @@ function Fab({
 }
 
 export default function App() {
+  const [globalErr, setGlobalErr] = useState<string>('');
+
+  // 全域錯誤捕捉(含 render 以外的 async / 原生 JS 錯誤)→ 直接印到畫面,便於診斷黑屏
+  useEffect(() => {
+    const g = (global as unknown as { ErrorUtils?: any }).ErrorUtils;
+    if (!g?.setGlobalHandler) return;
+    const prev = g.getGlobalHandler?.();
+    g.setGlobalHandler((e: any, isFatal: boolean) => {
+      setGlobalErr(`[全域${isFatal ? ' FATAL' : ''}] ${e?.message ?? e}\n\n${e?.stack ?? ''}`);
+      prev?.(e, isFatal);
+    });
+  }, []);
+
+  // 根層一律鋪深藍底:只要 React 有 commit,畫面至少是深藍不會純黑 —— 用來判斷渲染是否發生
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <Main />
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <View style={{ flex: 1, backgroundColor: '#0a0f24' }}>
+      {globalErr ? (
+        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 70 }}>
+          <Text style={{ color: '#ffb26b', fontSize: 15, fontWeight: '800', marginBottom: 10 }}>
+            Rainland 執行錯誤(請截圖給我)
+          </Text>
+          <Text style={{ color: '#ff8080', fontSize: 12, lineHeight: 17 }}>{globalErr}</Text>
+        </ScrollView>
+      ) : (
+        <ErrorBoundary>
+          <SafeAreaProvider>
+            <Main />
+          </SafeAreaProvider>
+        </ErrorBoundary>
+      )}
+    </View>
   );
 }
 
