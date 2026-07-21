@@ -51,6 +51,7 @@ type SheetName = 'search' | 'mixer' | 'timer' | 'settings' | null;
 let rainMarkersCache: { at: number; spots: { city: City; level: number }[] } | null = null;
 
 function Main() {
+  console.log('[Rainland] Main render 開始');
   const insets = useSafeAreaInsets();
   const {
     lang,
@@ -367,6 +368,7 @@ function Fab({
 }
 
 export default function App() {
+  console.log('[Rainland] App render 開始');
   const [globalErr, setGlobalErr] = useState<string>('');
 
   // 全域錯誤捕捉(含 render 以外的 async / 原生 JS 錯誤)→ 直接印到畫面,便於診斷黑屏
