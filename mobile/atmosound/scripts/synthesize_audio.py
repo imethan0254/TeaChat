@@ -86,36 +86,24 @@ def soft_drops(n, rate_hz, f_lo, f_hi, dur_s=0.03):
 DUR = 32
 N = (DUR + 3) * SR
 
-# ── L1 rain-mist:霧狀細雨,極柔 ──
-mist = bp(pink(N), 400, 2600) * slow_lfo(N, 0.05, 0.3, 1.0)
-save("rain-mist", norm(loopify(lp(mist, 3200)), 0.6))
+# 雨聲 v2 乾淨溫暖版(降嘶聲):brown 為主暖底 + lowpass 收更低(~4kHz)去刺耳高頻
+def warm_bed(level_gain, lo, hi, fc):
+    base = (brown(N) * 0.7 + pink(N) * 0.3)
+    base = bp(base, lo, hi) * slow_lfo(N, 0.06, 0.22, 1.0) * level_gain
+    return lp(base, fc)
 
-# ── L2 rain-drips:錯落滴答,溫潤 ──
-bed = bp(pink(N), 350, 2200) * 0.22 * slow_lfo(N, 0.07, 0.25, 1.0)
-drips = soft_drops(N, 6, 600, 2200, 0.035) * 0.85
-save("rain-drips", norm(loopify(lp(bed + drips, 3600)), 0.68))
-
-# ── L3 rain-light:綿綿沙沙 ──
-body = bp(pink(N), 300, 4200) * 0.55 * slow_lfo(N, 0.08, 0.2, 1.0)
-drs = soft_drops(N, 14, 600, 2600) * 0.4
-save("rain-light", norm(loopify(lp(body + drs, 5000)), 0.74))
-
-# ── L4 rain-medium:飽滿但溫潤的啪嗒 ──
-body = bp(pink(N) * 0.75 + white(N) * 0.25, 250, 4800) * 0.6 * slow_lfo(N, 0.09, 0.18, 1.0)
-drs = soft_drops(N, 30, 500, 3000) * 0.35
-low = lp(brown(N), 220) * 0.22
-save("rain-medium", norm(loopify(lp(body + drs + low, 5600))))
-
-# ── L5 rain-heavy:厚實但不刺耳 ──
-body = bp(pink(N) * 0.6 + white(N) * 0.4, 200, 5200) * 0.75 * slow_lfo(N, 0.1, 0.15, 1.0)
-low = lp(brown(N), 200) * 0.32
-drs = soft_drops(N, 45, 450, 3200) * 0.3
-save("rain-heavy", norm(loopify(lp(body + low + drs, 6000))))
-
-# ── L6-7 rain-downpour:平滑轟鳴 roar ──
-roar = bp(pink(N) * 0.5 + white(N) * 0.5, 160, 5800) * 0.9 * slow_lfo(N, 0.1, 0.12, 1.0)
-deep = lp(brown(N), 170) * 0.45
-save("rain-downpour", norm(loopify(lp(roar + deep, 6400))))
+# L1 mist:幾乎只有暖底細語,無滴答
+save("rain-mist", norm(loopify(warm_bed(0.22, 200, 2200, 2600)), 0.55))
+# L2 drips:柔滴答為主
+save("rain-drips", norm(loopify(lp(warm_bed(0.16, 200, 2400, 3000) + soft_drops(N, 5, 500, 1600, 0.04) * 0.8, 3200)), 0.66))
+# L3 light:綿綿
+save("rain-light", norm(loopify(lp(warm_bed(0.5, 180, 3200, 3600) + soft_drops(N, 11, 500, 1900) * 0.4, 3800)), 0.72))
+# L4 medium:飽滿溫潤
+save("rain-medium", norm(loopify(lp(warm_bed(0.62, 160, 3600, 4000) + soft_drops(N, 24, 450, 2100) * 0.32 + lp(brown(N), 180) * 0.28, 4200))))
+# L5 heavy:厚實不刺
+save("rain-heavy", norm(loopify(lp(warm_bed(0.8, 140, 4000, 4400) + lp(brown(N), 170) * 0.4 + soft_drops(N, 36, 420, 2200) * 0.26, 4600))))
+# L6-7 downpour:平滑轟鳴(暖)
+save("rain-downpour", norm(loopify(lp(warm_bed(1.0, 120, 4400, 4800) + lp(brown(N), 150) * 0.5, 5000))))
 
 # ── wind:柔風(呼嘯壓低) ──
 gust = lp(pink(N), 380) * slow_lfo(N, 0.09, 0.9, 0.85)
@@ -212,37 +200,14 @@ while pos < DUR + 2:
     pos += rng.uniform(0.7, 2.2)
 save("keyboard", norm(loopify(lp(kb, 5600)), 0.6))
 
-# ── drop:觸水互動音(one-shot 1.15s)— surfacing water splashes 浮出水面的水花 ──
-dn = int(1.15 * SR)
-tt = np.arange(dn) / SR
-# 水面湧動 surge:低頻由下往上快速 build(水被推開、要浮出)
-surge_env = np.clip(tt / 0.09, 0, 1) ** 1.4 * np.exp(-np.maximum(tt - 0.09, 0) * 4)
-surge = lp(white(dn), 500) * surge_env * 0.6
-# 破面水花 splash:破水面瞬間寬頻爆發
-brk = bp(white(dn), 400, 5000) * np.exp(-np.maximum(tt - 0.07, 0) * 16) * (tt > 0.05)
-# 傾洩水流 cascade:中高頻噪音緩衰減 + 細碎抖動
-cascade = bp(white(dn), 700, 4500) * np.exp(-np.maximum(tt - 0.1, 0) * 5.5) * (tt > 0.08)
-cascade *= slow_lfo(dn, 22, 0.7, 1.0) * 0.5
-# 咕嚕氣泡 gurgle:數顆上滑共振氣泡(浮出水面的「濕」感)
-gurgle = np.zeros(dn)
-for _ in range(7):
-    start = rng.uniform(0.06, 0.6); bd = rng.uniform(0.04, 0.09)
-    bn = int(bd * SR); i = int(start * SR)
-    if i + bn >= dn: continue
-    tb = np.arange(bn) / SR
-    ph = 2 * np.pi * np.cumsum(rng.uniform(240, 700) * (1 + 0.9 * tb / bd)) / SR
-    gurgle[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.1 * rng.uniform(0.12, 0.26)
-# 水珠餘韻 droplets:濺起後回落
-drops = np.zeros(dn)
-for _ in range(6):
-    start = rng.uniform(0.3, 0.95); bd = rng.uniform(0.02, 0.045)
-    bn = int(bd * SR); i = int(start * SR)
-    if i + bn >= dn: continue
-    tb = np.arange(bn) / SR
-    ph = 2 * np.pi * np.cumsum(rng.uniform(800, 1500) * np.exp(-tb * 20) + 320) / SR
-    drops[i:i+bn] += np.sin(ph) * np.sin(np.pi * np.linspace(0, 1, bn)) ** 1.3 * rng.uniform(0.08, 0.18)
-_drop = lp(surge + brk + cascade + gurgle + drops, 5500)
-_drop *= np.clip(1 - np.maximum(tt - 0.85, 0) / 0.3, 0, 1)  # 柔和淡出尾巴
-save("drop", norm(_drop, 0.75))
+# ── drop:點擊互動音 — 乾淨單顆水滴 ploink(入水 → 共振音高下滑 → 小氣泡)──
+dn = int(0.6 * SR); tt = np.arange(dn) / SR
+f = 1050 * np.exp(-tt * 22) + 300
+ploink = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 7.5)
+tick = bp(white(dn), 800, 4000) * np.exp(-tt * 45) * 0.4        # 入水寬頻 tick
+b = int(0.05 * SR); fb = 1300 * np.exp(-tt * 16) + 420           # 小氣泡回彈
+bub = np.sin(2 * np.pi * np.cumsum(fb) / SR) * np.exp(-tt * 20) * 0.35
+ploink[b:] += bub[:-b]
+save("drop", norm(lp(ploink + tick, 5000), 0.72))
 
 print("DONE")

@@ -139,13 +139,153 @@ function MistLayer({ intensity }: { intensity: number }) {
   );
 }
 
+export interface RainBurst {
+  id: number;
+  /** 0–1 螢幕寬度比例(點擊處) */
+  x: number;
+}
+
+/** 單顆地面濺水:底部一圈快速擴散淡出的橢圓,模擬雨滴打到地板 */
+function GroundSplash({ leftPct, delay, period, vw }: { leftPct: number; delay: number; period: number; vw: number }) {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const run = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(t, { toValue: 1, duration: 620, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(period),
+      ]),
+    );
+    run.start();
+    return () => run.stop();
+  }, [t, delay, period]);
+  const scaleX = t.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1.7] });
+  const scaleY = t.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  const opacity = t.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.55, 0] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        bottom: 10,
+        left: leftPct * vw - 13,
+        width: 26,
+        height: 11,
+        borderRadius: 13,
+        borderWidth: 1.5,
+        borderColor: 'rgba(215,232,255,0.9)',
+        opacity,
+        transform: [{ scaleX }, { scaleY }],
+      }}
+    />
+  );
+}
+
+/** 地面濺水層:數量隨雨勢級數,持續在底部隨機冒出濺水 */
+function GroundSplashLayer({ level, vw }: { level: number; vw: number }) {
+  const spots = useMemo(() => {
+    const count = Math.min(Math.round(level * 3.2), 22);
+    return Array.from({ length: count }, () => ({
+      leftPct: Math.random(),
+      delay: Math.random() * 1600,
+      period: 500 + Math.random() * (1600 - level * 150),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level]);
+  if (level <= 0) return null;
+  return (
+    <>
+      {spots.map((s, i) => (
+        <GroundSplash key={`gs-${level}-${i}`} leftPct={s.leftPct} delay={s.delay} period={Math.max(s.period, 350)} vw={vw} />
+      ))}
+    </>
+  );
+}
+
+/** 點擊灑雨:在點擊 x 欄位灑下一陣快雨 + 落地濺水(需求 1) */
+function Burst({ x, height, vw }: { x: number; height: number; vw: number }) {
+  const cx = x * vw;
+  const drops = useMemo(
+    () =>
+      Array.from({ length: 16 }, () => ({
+        dx: (Math.random() - 0.5) * 76,
+        delay: Math.random() * 180,
+        dur: 380 + Math.random() * 240,
+        len: 18 + Math.random() * 24,
+        w: 1.8 + Math.random() * 1.2,
+      })),
+    [],
+  );
+  const splash = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(340),
+      Animated.timing(splash, { toValue: 1, duration: 520, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [splash]);
+  return (
+    <View pointerEvents="none" style={styles.fill}>
+      {drops.map((d, i) => (
+        <BurstDrop key={`bd-${i}`} left={cx + d.dx} delay={d.delay} dur={d.dur} len={d.len} w={d.w} height={height} />
+      ))}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: 8,
+          left: cx - 20,
+          width: 40,
+          height: 16,
+          borderRadius: 20,
+          borderWidth: 2,
+          borderColor: 'rgba(225,238,255,0.95)',
+          opacity: splash.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.7, 0] }),
+          transform: [
+            { scaleX: splash.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1.8] }) },
+            { scaleY: splash.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+          ],
+        }}
+      />
+    </View>
+  );
+}
+
+function BurstDrop({ left, delay, dur, len, w, height }: { left: number; delay: number; dur: number; len: number; w: number; height: number }) {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(t, { toValue: 1, delay, duration: dur, easing: Easing.in(Easing.quad), useNativeDriver: true }).start();
+  }, [t, delay, dur]);
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [-len - 40, height - 14] });
+  const opacity = t.interpolate({ inputRange: [0, 0.1, 0.85, 1], outputRange: [0, 0.9, 0.9, 0] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left,
+        top: 0,
+        width: w,
+        height: len,
+        borderRadius: w,
+        backgroundColor: 'rgba(220,235,255,0.95)',
+        opacity,
+        transform: [{ translateY }],
+      }}
+    />
+  );
+}
+
 interface Props {
   visual: RainVisual;
   phase: DayPhase;
+  /** 點擊灑雨事件(需求 1) */
+  bursts?: RainBurst[];
 }
 
-export function RainScene({ visual, phase }: Props) {
+export function RainScene({ visual, phase, bursts = [] }: Props) {
   const { width, height } = useWindowDimensions();
+
 
   // 每級生成一組固定雨滴規格(level 變了才重算 → 動畫平順)
   const drops = useMemo<DropSpec[]>(() => {
@@ -181,6 +321,12 @@ export function RainScene({ visual, phase }: Props) {
         colors={['rgba(255,255,255,0)', `rgba(190,210,235,${0.08 + visual.dropOpacity * 0.12})`]}
         style={styles.ground}
       />
+      {/* 雨打到地板的濺水(需求 1) */}
+      <GroundSplashLayer level={Math.min(Math.round(visual.dropCount / 25), 7)} vw={width} />
+      {/* 點擊灑下的一陣雨 */}
+      {bursts.map((b) => (
+        <Burst key={b.id} x={b.x} height={height} vw={width} />
+      ))}
     </View>
   );
 }

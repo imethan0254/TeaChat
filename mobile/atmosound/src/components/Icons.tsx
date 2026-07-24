@@ -1,197 +1,144 @@
 import React from 'react';
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Path, Polygon } from 'react-native-svg';
 
 /**
- * 扁平圓潤 icon 系統(需求 1、2):
- * 統一 stroke 風格、圓端點(strokeLinecap round)、無寫實漸層,
- * 每個 icon 造型清楚可辨識,不依賴文字。
+ * Icon 系統 — 採用 IBM Carbon Design System icons(Apache-2.0)。
+ * 路徑為 Carbon 官方 32×32 grid 填色(fill)資料,取自
+ * github.com/carbon-design-system/carbon(packages/icons/src/svg/32)。
+ * 全部以 fill 上色;strokeWidth 保留於介面相容,填色 icon 不使用。
  */
 
 export interface IconProps {
   size?: number;
   color?: string;
   strokeWidth?: number;
+  fill?: string;
 }
 
-const D = { size: 22, color: '#fff', strokeWidth: 2 };
+const D = { size: 22, color: '#fff' };
 
-const base = (p: IconProps) => ({
+const svg = (p: IconProps) => ({
   width: p.size ?? D.size,
   height: p.size ?? D.size,
-  viewBox: '0 0 24 24',
-  fill: 'none' as const,
+  viewBox: '0 0 32 32',
 });
 
-const stroke = (p: IconProps) => ({
-  stroke: p.color ?? D.color,
-  strokeWidth: p.strokeWidth ?? D.strokeWidth,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-});
+const F = (p: IconProps) => p.color ?? D.color;
 
-/** 地球(切到世界地圖) */
+/** 地圖(切到世界地圖)— Carbon "map" */
 export const GlobeIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Circle cx={12} cy={12} r={9} {...stroke(p)} />
-    <Path d="M3 12h18" {...stroke(p)} />
-    <Path d="M12 3c2.6 2.5 3.9 5.5 3.9 9S14.6 18.5 12 21c-2.6-2.5-3.9-5.5-3.9-9S9.4 5.5 12 3z" {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M16,24l-6.09-8.6A8.14,8.14,0,0,1,16,2a8.08,8.08,0,0,1,8,8.13,8.2,8.2,0,0,1-1.8,5.13ZM16,4a6.07,6.07,0,0,0-6,6.13,6.19,6.19,0,0,0,1.49,4L16,20.52,20.63,14A6.24,6.24,0,0,0,22,10.13,6.07,6.07,0,0,0,16,4Z" />
+    <Path fill={F(p)} d="M28,12H26v2h2V28H4V14H6V12H4a2,2,0,0,0-2,2V28a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V14A2,2,0,0,0,28,12Z" />
   </Svg>
 );
 
-/** 雨雲(切回雨景) */
+/** 雨(切回雨景)— Carbon "rain" */
 export const RainCloudIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Path d="M7 14a4.5 4.5 0 1 1 .6-8.96A5.5 5.5 0 0 1 18.3 7.2 3.75 3.75 0 0 1 17 14H7z" {...stroke(p)} />
-    <Line x1={8.5} y1={17} x2={8} y2={19.5} {...stroke(p)} />
-    <Line x1={12.5} y1={17} x2={12} y2={19.5} {...stroke(p)} />
-    <Line x1={16.5} y1={17} x2={16} y2={19.5} {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M23.5,22H8.5A6.5,6.5,0,0,1,7.2,9.14a9,9,0,0,1,17.6,0A6.5,6.5,0,0,1,23.5,22ZM16,4a7,7,0,0,0-6.94,6.14L9,11,8.14,11a4.5,4.5,0,0,0,.36,9h15a4.5,4.5,0,0,0,.36-9L23,11l-.1-.82A7,7,0,0,0,16,4Z" />
+    <Path fill={F(p)} d="M14,30a.93.93,0,0,1-.45-.11,1,1,0,0,1-.44-1.34l2-4a1,1,0,1,1,1.78.9l-2,4A1,1,0,0,1,14,30Z" />
+    <Path fill={F(p)} d="M20,30a.93.93,0,0,1-.45-.11,1,1,0,0,1-.44-1.34l2-4a1,1,0,1,1,1.78.9l-2,4A1,1,0,0,1,20,30Z" />
+    <Path fill={F(p)} d="M8,30a.93.93,0,0,1-.45-.11,1,1,0,0,1-.44-1.34l2-4a1,1,0,1,1,1.78.9l-2,4A1,1,0,0,1,8,30Z" />
   </Svg>
 );
 
-/** 找雨(需求 4):放大鏡搜尋意象,鏡片內含雨滴 */
-export const RainSearchIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Circle cx={10.5} cy={10.5} r={7} {...stroke(p)} />
-      <Line x1={15.8} y1={15.8} x2={21} y2={21} {...stroke(p)} />
-      <Path
-        d="M10.5 6.8c1.5 1.9 2.8 3.4 2.8 5a2.8 2.8 0 1 1-5.6 0c0-1.6 1.3-3.1 2.8-5z"
-        fill={c}
-        stroke={c}
-        strokeWidth={1}
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-};
-
-/** 定位十字準星(回到自己位置找最近的雨) */
-export const LocateIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Circle cx={12} cy={12} r={6.5} {...stroke(p)} />
-      <Circle cx={12} cy={12} r={1.6} fill={c} />
-      <Line x1={12} y1={2.5} x2={12} y2={5.5} {...stroke(p)} />
-      <Line x1={12} y1={18.5} x2={12} y2={21.5} {...stroke(p)} />
-      <Line x1={2.5} y1={12} x2={5.5} y2={12} {...stroke(p)} />
-      <Line x1={18.5} y1={12} x2={21.5} y2={12} {...stroke(p)} />
-    </Svg>
-  );
-};
-
-/** 齒輪(設定)— 常見實心齒輪造型(需求 4) */
-export const GearIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Path
-        fill={c}
-        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"
-      />
-    </Svg>
-  );
-};
-
-/** 放大鏡(搜尋) */
+/** 搜尋 / 找雨 — Carbon "search" */
 export const SearchIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Circle cx={10.5} cy={10.5} r={6.5} {...stroke(p)} />
-    <Line x1={15.5} y1={15.5} x2={20.5} y2={20.5} {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M29,27.5859l-7.5521-7.5521a11.0177,11.0177,0,1,0-1.4141,1.4141L27.5859,29ZM4,13a9,9,0,1,1,9,9A9.01,9.01,0,0,1,4,13Z" />
+  </Svg>
+);
+/** 找雨 icon = 放大鏡(與 SearchIcon 同,Carbon search) */
+export const RainSearchIcon = SearchIcon;
+
+/** 設定(齒輪)— Carbon "settings" */
+export const GearIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.64l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z" />
+    <Path fill={F(p)} d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z" />
   </Svg>
 );
 
-/** 混音滑桿 */
-export const SlidersIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Line x1={6} y1={4} x2={6} y2={20} {...stroke(p)} />
-      <Line x1={12} y1={4} x2={12} y2={20} {...stroke(p)} />
-      <Line x1={18} y1={4} x2={18} y2={20} {...stroke(p)} />
-      <Circle cx={6} cy={9} r={2} fill={c} />
-      <Circle cx={12} cy={15} r={2} fill={c} />
-      <Circle cx={18} cy={7} r={2} fill={c} />
-    </Svg>
-  );
-};
+/** 混音(滑桿)— Carbon "settings--adjust" */
+export const SlidersIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M30,8h-4.1c-0.5-2.3-2.5-4-4.9-4s-4.4,1.7-4.9,4H2v2h14.1c0.5,2.3,2.5,4,4.9,4s4.4-1.7,4.9-4H30V8z M21,12c-1.7,0-3-1.3-3-3s1.3-3,3-3s3,1.3,3,3S22.7,12,21,12z" />
+    <Path fill={F(p)} d="M2,24h4.1c0.5,2.3,2.5,4,4.9,4s4.4-1.7,4.9-4H30v-2H15.9c-0.5-2.3-2.5-4-4.9-4s-4.4,1.7-4.9,4H2V24z M11,20c1.7,0,3,1.3,3,3s-1.3,3-3,3s-3-1.3-3-3S9.3,20,11,20z" />
+  </Svg>
+);
 
-/** 時鐘(計時器) */
+/** 計時器 — Carbon "timer" */
 export const ClockIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Circle cx={12} cy={12} r={9} {...stroke(p)} />
-    <Path d="M12 7v5l3.2 2" {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M28,9,26.58,7.59,24.33,9.84a10.94,10.94,0,1,0,1.18,1.65ZM16,26a9,9,0,1,1,9-9A9,9,0,0,1,16,26Z" />
+    <Path fill={F(p)} d="M15,11h2v7h-2Z" />
+    <Path fill={F(p)} d="M12,1h8V3H12Z" />
   </Svg>
 );
 
-/** 播放 */
-export const PlayIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Path d="M8.2 5.5c0-1 1.1-1.6 2-1.1l9 5.9c.8.5.8 1.9 0 2.4l-9 5.9c-.9.5-2-.1-2-1.1V5.5z" fill={c} stroke={c} strokeWidth={1.5} strokeLinejoin="round" />
-    </Svg>
-  );
-};
+/** 播放 — Carbon "play--filled"(三角) */
+export const PlayIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M11,23a1,1,0,0,1-1-1V10a1,1,0,0,1,1.4473-.8945l12,6a1,1,0,0,1,0,1.789l-12,6A1.001,1.001,0,0,1,11,23Z" />
+  </Svg>
+);
 
-/** 暫停 */
-export const PauseIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Rect x={6} y={4.5} width={4} height={15} rx={2} fill={c} />
-      <Rect x={14} y={4.5} width={4} height={15} rx={2} fill={c} />
-    </Svg>
-  );
-};
+/** 暫停 — Carbon "pause--filled" */
+export const PauseIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M12,6H10A2,2,0,0,0,8,8V24a2,2,0,0,0,2,2h2a2,2,0,0,0,2-2V8a2,2,0,0,0-2-2Z" />
+    <Path fill={F(p)} d="M22,6H20a2,2,0,0,0-2,2V24a2,2,0,0,0,2,2h2a2,2,0,0,0,2-2V8a2,2,0,0,0-2-2Z" />
+  </Svg>
+);
 
-/** 眼睛(顯示完整資訊) */
-export const EyeIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" {...stroke(p)} />
-      <Circle cx={12} cy={12} r={2.6} fill={c} />
-    </Svg>
-  );
-};
+/** 顯示資訊(眼睛)— Carbon "view" */
+export const EyeIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M30.94,15.66A16.69,16.69,0,0,0,16,5,16.69,16.69,0,0,0,1.06,15.66a1,1,0,0,0,0,.68A16.69,16.69,0,0,0,16,27,16.69,16.69,0,0,0,30.94,16.34,1,1,0,0,0,30.94,15.66ZM16,25c-5.3,0-10.9-3.93-12.93-9C5.1,10.93,10.7,7,16,7s10.9,3.93,12.93,9C26.9,21.07,21.3,25,16,25Z" />
+    <Path fill={F(p)} d="M16,10a6,6,0,1,0,6,6A6,6,0,0,0,16,10Zm0,10a4,4,0,1,1,4-4A4,4,0,0,1,16,20Z" />
+  </Svg>
+);
 
-/** 眼睛關(隱藏資訊,只看雨) */
+/** 隱藏資訊(眼睛關)— Carbon "view--off" */
 export const EyeOffIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Path d="M4.5 8.5C3.2 9.9 2.5 12 2.5 12s3.5 6.2 9.5 6.2c1.3 0 2.5-.3 3.6-.8M9.5 6.2c.8-.25 1.6-.4 2.5-.4 6 0 9.5 6.2 9.5 6.2s-.9 1.6-2.5 3.2" {...stroke(p)} />
-    <Line x1={4} y1={4} x2={20} y2={20} {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M5.24,22.51l1.43-1.42A14.06,14.06,0,0,1,3.07,16C5.1,10.93,10.7,7,16,7a12.38,12.38,0,0,1,4,.72l1.55-1.56A14.72,14.72,0,0,0,16,5A16.69,16.69,0,0,0,1.06,15.66a1,1,0,0,0,0,.68A16,16,0,0,0,5.24,22.51Z" />
+    <Path fill={F(p)} d="M12,15.73a4,4,0,0,1,3.7-3.7l1.81-1.82a6,6,0,0,0-7.33,7.33Z" />
+    <Path fill={F(p)} d="M30.94,15.66A16.4,16.4,0,0,0,25.2,8.22L30,3.41,28.59,2,2,28.59,3.41,30l5.1-5.1A15.29,15.29,0,0,0,16,27,16.69,16.69,0,0,0,30.94,16.34,1,1,0,0,0,30.94,15.66ZM20,16a4,4,0,0,1-6,3.44L19.44,14A4,4,0,0,1,20,16Zm-4,9a13.05,13.05,0,0,1-6-1.58l2.54-2.54a6,6,0,0,0,8.35-8.35l2.87-2.87A14.54,14.54,0,0,1,28.93,16C26.9,21.07,21.3,25,16,25Z" />
   </Svg>
 );
 
-/** i 資訊鍵(雨勢分級說明浮窗) */
-export const InfoIcon = (p: IconProps) => {
-  const c = p.color ?? D.color;
-  return (
-    <Svg {...base(p)}>
-      <Circle cx={12} cy={12} r={9} {...stroke(p)} />
-      <Circle cx={12} cy={7.8} r={1.3} fill={c} />
-      <Line x1={12} y1={11} x2={12} y2={16.5} {...stroke(p)} />
-    </Svg>
-  );
-};
+/** 定位 — Carbon "location" */
+export const LocateIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M16,18a5,5,0,1,1,5-5A5.0057,5.0057,0,0,1,16,18Zm0-8a3,3,0,1,0,3,3A3.0033,3.0033,0,0,0,16,10Z" />
+    <Path fill={F(p)} d="M16,30,7.5645,20.0513c-.0479-.0571-.3482-.4515-.3482-.4515A10.8888,10.8888,0,0,1,5,13a11,11,0,0,1,22,0,10.8844,10.8844,0,0,1-2.2148,6.5973l-.0015.0025s-.3.3944-.3447.4474ZM8.8125,18.395c.001.0007.2334.3082.2866.3744L16,26.9079l6.91-8.15c.0439-.0552.2783-.3649.2788-.3657A8.901,8.901,0,0,0,25,13,9,9,0,1,0,7,13a8.9054,8.9054,0,0,0,1.8125,5.395Z" />
+  </Svg>
+);
 
-/** 關閉(浮窗 X) */
+/** 資訊 — Carbon "information" */
+export const InfoIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M16,8a1.5,1.5,0,1,0,1.5,1.5A1.5,1.5,0,0,0,16,8Z" />
+    <Path fill={F(p)} d="M16,30A14,14,0,1,1,30,16,14,14,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12,12,0,0,0,16,4Z" />
+    <Path fill={F(p)} d="M17,22V14H13v2h2v6H12v2h8V22Z" />
+  </Svg>
+);
+
+/** 關閉 — Carbon "close" */
 export const CloseIcon = (p: IconProps) => (
-  <Svg {...base(p)}>
-    <Line x1={6} y1={6} x2={18} y2={18} {...stroke(p)} />
-    <Line x1={18} y1={6} x2={6} y2={18} {...stroke(p)} />
+  <Svg {...svg(p)}>
+    <Polygon
+      fill={F(p)}
+      points="17.4141 16 24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16"
+    />
   </Svg>
 );
 
-/** 水滴(地圖上的下雨標記) */
-export const DropIcon = (p: IconProps & { fill?: string }) => (
-  <Svg {...base(p)}>
-    <Path
-      d="M12 3.2c3.2 4 6 7.3 6 10.6a6 6 0 1 1-12 0c0-3.3 2.8-6.6 6-10.6z"
-      fill={p.fill ?? 'none'}
-      {...stroke(p)}
-    />
+/** 雨滴(地圖標記)— Carbon "rain-drop" */
+export const DropIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={p.fill ?? F(p)} d="M16,28a9.0114,9.0114,0,0,1-9-9,9.9843,9.9843,0,0,1,1.4941-4.9554L15.1528,3.4367a1.04,1.04,0,0,1,1.6944,0l6.6289,10.5564A10.0633,10.0633,0,0,1,25,19,9.0114,9.0114,0,0,1,16,28Z" />
   </Svg>
 );

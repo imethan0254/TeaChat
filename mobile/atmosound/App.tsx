@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,7 +28,7 @@ import {
 } from './src/components/Icons';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { MixerSheet } from './src/components/MixerSheet';
-import { RainScene } from './src/components/RainScene';
+import { RainScene, type RainBurst } from './src/components/RainScene';
 // 地圖模組很重,改為「用到才載入」— 雨景(預設)不依賴 react-native-maps,避免啟動崩潰
 const MapScreen = React.lazy(() =>
   import('./src/components/MapScreen').then((m) => ({ default: m.MapScreen })),
@@ -51,8 +52,8 @@ type SheetName = 'search' | 'mixer' | 'timer' | 'settings' | null;
 let rainMarkersCache: { at: number; spots: { city: City; level: number }[] } | null = null;
 
 function Main() {
-  console.log('[Rainland] Main render 開始');
   const insets = useSafeAreaInsets();
+  const { width: screenW } = useWindowDimensions();
   const {
     lang,
     view,
@@ -75,6 +76,7 @@ function Main() {
   const t = makeT(lang);
   const [sheet, setSheet] = useState<SheetName>(null);
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  const [bursts, setBursts] = useState<RainBurst[]>([]);
   const [rainMarkers, setRainMarkers] = useState<{ city: City; level: number }[]>([]);
   const mapRef = useRef<MapView>(null);
   const rippleId = useRef(0);
@@ -171,16 +173,19 @@ function Main() {
     );
   }, [location.lat, location.lon, view]);
 
-  // 點擊雨景:水波紋 + 觸水聲;UI 顯示中則同時直接隱藏(按鈕整併需求)
+  // 點擊雨景(需求 1):在點擊處灑下一陣雨(落地濺水)+ 水波紋 + 觸水聲。
+  // 隱藏資訊改由右下角眼睛鍵負責(不再點一下就隱藏,以免與灑雨衝突)。
   const onScenePress = useCallback(
     (x: number, y: number) => {
       const id = rippleId.current++;
       setRipples((rs) => [...rs.slice(-6), { id, x, y }]);
       setTimeout(() => setRipples((rs) => rs.filter((r) => r.id !== id)), 950);
+      const bx = screenW > 0 ? x / screenW : 0.5;
+      setBursts((bs) => [...bs.slice(-4), { id, x: bx }]);
+      setTimeout(() => setBursts((bs) => bs.filter((b) => b.id !== id)), 1300);
       void engine.playDrop();
-      if (!uiHidden) setUiHidden(true);
     },
-    [uiHidden, setUiHidden],
+    [screenW],
   );
 
   const onMapPress = async (lat: number, lon: number) => {
@@ -260,7 +265,7 @@ function Main() {
           style={StyleSheet.absoluteFill}
           onPress={(e) => onScenePress(e.nativeEvent.locationX, e.nativeEvent.locationY)}
         >
-          <RainScene visual={visual} phase={phase} />
+          <RainScene visual={visual} phase={phase} bursts={bursts} />
         </Pressable>
       )}
 
@@ -368,7 +373,6 @@ function Fab({
 }
 
 export default function App() {
-  console.log('[Rainland] App render 開始');
   const [globalErr, setGlobalErr] = useState<string>('');
 
   // 全域錯誤捕捉(含 render 以外的 async / 原生 JS 錯誤)→ 直接印到畫面,便於診斷黑屏
