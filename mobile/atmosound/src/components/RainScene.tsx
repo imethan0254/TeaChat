@@ -279,12 +279,16 @@ function BurstDrop({ left, delay, dur, len, w, height }: { left: number; delay: 
 interface Props {
   visual: RainVisual;
   phase: DayPhase;
-  /** 點擊灑雨事件(需求 1) */
+  /** 點擊灑雨事件(保留;目前 App 未使用) */
   bursts?: RainBurst[];
+  /** 點擊改變的雨傾斜角(度);null = 用風速預設傾角(需求 1) */
+  slantOverride?: number | null;
 }
 
-export function RainScene({ visual, phase, bursts = [] }: Props) {
+export function RainScene({ visual, phase, bursts = [], slantOverride = null }: Props) {
   const { width, height } = useWindowDimensions();
+  // 點擊指定的傾角優先,否則用天氣風速的預設傾角
+  const slant = slantOverride ?? visual.slant;
 
 
   // 每級生成一組固定雨滴規格(level 變了才重算 → 動畫平順)
@@ -313,7 +317,7 @@ export function RainScene({ visual, phase, bursts = [] }: Props) {
       <View style={[styles.fill, { backgroundColor: '#060a14', opacity: visual.gloom }]} />
       <MistLayer intensity={visual.mist} />
       {drops.map((d, i) => (
-        <Drop key={`${visual.dropCount}-${i}`} spec={d} slant={visual.slant} height={height} width={width} />
+        <Drop key={`${visual.dropCount}-${i}`} spec={d} slant={slant} height={height} width={width} />
       ))}
       <Lightning chance={visual.lightning} />
       {/* 地面積水的微光 */}

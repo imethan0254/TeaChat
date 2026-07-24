@@ -136,6 +136,13 @@ export const CloseIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** 向下箭頭(展開/收合)— Carbon "chevron--down" */
+export const ChevronDownIcon = (p: IconProps) => (
+  <Svg {...svg(p)}>
+    <Path fill={F(p)} d="M16,22L6,12l1.4-1.4l8.6,8.6l8.6-8.6L26,12L16,22z" />
+  </Svg>
+);
+
 /** 雨滴(地圖標記)— Carbon "rain-drop" */
 export const DropIcon = (p: IconProps) => (
   <Svg {...svg(p)}>

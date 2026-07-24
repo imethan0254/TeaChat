@@ -103,14 +103,15 @@ export interface RainVisual {
 export function rainVisual(level: number, w: Weather): RainVisual {
   const windSlant = clamp(w.wind / 4, 0, 24);
   const presets: Record<number, RainVisual> = {
-    0: { dropCount: 0, fallMs: [3000, 4000], dropLength: [10, 16], dropWidth: 1, slant: 0, dropOpacity: 0, mist: 0.06, lightning: 0, gloom: 0 },
-    1: { dropCount: 24, fallMs: [4200, 6500], dropLength: [6, 12], dropWidth: 1, slant: 2, dropOpacity: 0.3, mist: 0.5, lightning: 0, gloom: 0.05 },
-    2: { dropCount: 42, fallMs: [2800, 4200], dropLength: [10, 18], dropWidth: 1.2, slant: 4, dropOpacity: 0.42, mist: 0.3, lightning: 0, gloom: 0.1 },
-    3: { dropCount: 64, fallMs: [1900, 2800], dropLength: [16, 26], dropWidth: 1.5, slant: 7, dropOpacity: 0.52, mist: 0.18, lightning: 0, gloom: 0.18 },
-    4: { dropCount: 88, fallMs: [1300, 2000], dropLength: [22, 34], dropWidth: 1.8, slant: 10, dropOpacity: 0.62, mist: 0.14, lightning: 0.04, gloom: 0.28 },
-    5: { dropCount: 115, fallMs: [950, 1500], dropLength: [30, 46], dropWidth: 2.1, slant: 13, dropOpacity: 0.7, mist: 0.16, lightning: 0.12, gloom: 0.38 },
-    6: { dropCount: 145, fallMs: [700, 1100], dropLength: [40, 62], dropWidth: 2.4, slant: 19, dropOpacity: 0.78, mist: 0.24, lightning: 0.3, gloom: 0.5 },
-    7: { dropCount: 180, fallMs: [520, 850], dropLength: [52, 80], dropWidth: 2.8, slant: 24, dropOpacity: 0.85, mist: 0.34, lightning: 0.5, gloom: 0.62 },
+    // dropWidth 大幅調細:雨呈細線,不再粗線條(需求 2)
+    0: { dropCount: 0, fallMs: [3000, 4000], dropLength: [10, 16], dropWidth: 0.6, slant: 0, dropOpacity: 0, mist: 0.06, lightning: 0, gloom: 0 },
+    1: { dropCount: 26, fallMs: [4200, 6500], dropLength: [7, 13], dropWidth: 0.6, slant: 2, dropOpacity: 0.28, mist: 0.5, lightning: 0, gloom: 0.05 },
+    2: { dropCount: 46, fallMs: [2800, 4200], dropLength: [11, 19], dropWidth: 0.7, slant: 4, dropOpacity: 0.4, mist: 0.3, lightning: 0, gloom: 0.1 },
+    3: { dropCount: 70, fallMs: [1900, 2800], dropLength: [17, 27], dropWidth: 0.8, slant: 7, dropOpacity: 0.5, mist: 0.18, lightning: 0, gloom: 0.18 },
+    4: { dropCount: 96, fallMs: [1300, 2000], dropLength: [23, 35], dropWidth: 0.9, slant: 10, dropOpacity: 0.58, mist: 0.14, lightning: 0.04, gloom: 0.28 },
+    5: { dropCount: 125, fallMs: [950, 1500], dropLength: [31, 47], dropWidth: 1.0, slant: 13, dropOpacity: 0.66, mist: 0.16, lightning: 0.12, gloom: 0.38 },
+    6: { dropCount: 158, fallMs: [700, 1100], dropLength: [41, 63], dropWidth: 1.15, slant: 19, dropOpacity: 0.72, mist: 0.24, lightning: 0.3, gloom: 0.5 },
+    7: { dropCount: 195, fallMs: [520, 850], dropLength: [53, 82], dropWidth: 1.3, slant: 24, dropOpacity: 0.8, mist: 0.34, lightning: 0.5, gloom: 0.62 },
   };
   const v = presets[clamp(level, 0, 7)];
   // 實際風速再微調傾角

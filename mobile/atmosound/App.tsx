@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type MapView from 'react-native-maps';
-import { engine } from './src/audio/engine';
 import {
   EyeIcon,
   GearIcon,
@@ -28,7 +27,7 @@ import {
 } from './src/components/Icons';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { MixerSheet } from './src/components/MixerSheet';
-import { RainScene, type RainBurst } from './src/components/RainScene';
+import { RainScene } from './src/components/RainScene';
 // 地圖模組很重,改為「用到才載入」— 雨景(預設)不依賴 react-native-maps,避免啟動崩潰
 const MapScreen = React.lazy(() =>
   import('./src/components/MapScreen').then((m) => ({ default: m.MapScreen })),
@@ -76,7 +75,8 @@ function Main() {
   const t = makeT(lang);
   const [sheet, setSheet] = useState<SheetName>(null);
   const [ripples, setRipples] = useState<Ripple[]>([]);
-  const [bursts, setBursts] = useState<RainBurst[]>([]);
+  // 點擊改變的整體雨傾斜角(度);null = 依風速預設(需求 1)
+  const [rainSlant, setRainSlant] = useState<number | null>(null);
   const [rainMarkers, setRainMarkers] = useState<{ city: City; level: number }[]>([]);
   const mapRef = useRef<MapView>(null);
   const rippleId = useRef(0);
@@ -173,17 +173,15 @@ function Main() {
     );
   }, [location.lat, location.lon, view]);
 
-  // 點擊雨景(需求 1):在點擊處灑下一陣雨(落地濺水)+ 水波紋 + 觸水聲。
-  // 隱藏資訊改由右下角眼睛鍵負責(不再點一下就隱藏,以免與灑雨衝突)。
+  // 點擊雨景(需求 1):依點擊 x 位置改變「整體雨的傾斜方向」(不灑新雨、不播水聲)。
+  // 點左邊 → 雨往左斜;點右邊 → 雨往右斜;越靠邊斜得越大。輕微水波紋做為點擊回饋。
   const onScenePress = useCallback(
     (x: number, y: number) => {
       const id = rippleId.current++;
       setRipples((rs) => [...rs.slice(-6), { id, x, y }]);
-      setTimeout(() => setRipples((rs) => rs.filter((r) => r.id !== id)), 950);
+      setTimeout(() => setRipples((rs) => rs.filter((r) => r.id !== id)), 800);
       const bx = screenW > 0 ? x / screenW : 0.5;
-      setBursts((bs) => [...bs.slice(-4), { id, x: bx }]);
-      setTimeout(() => setBursts((bs) => bs.filter((b) => b.id !== id)), 1300);
-      void engine.playDrop();
+      setRainSlant(Math.max(-42, Math.min(42, (bx - 0.5) * 84)));
     },
     [screenW],
   );
@@ -265,7 +263,7 @@ function Main() {
           style={StyleSheet.absoluteFill}
           onPress={(e) => onScenePress(e.nativeEvent.locationX, e.nativeEvent.locationY)}
         >
-          <RainScene visual={visual} phase={phase} bursts={bursts} />
+          <RainScene visual={visual} phase={phase} slantOverride={rainSlant} />
         </Pressable>
       )}
 
